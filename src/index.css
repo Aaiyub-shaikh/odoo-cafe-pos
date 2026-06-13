@@ -1,0 +1,110 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,400;0,6..12,500;0,6..12,600;0,6..12,700;1,6..12,400&display=swap');
+
+@theme {
+  /* Warm cafe / fast-food restaurant palette */
+  --color-background: #fff8f0;
+  --color-foreground: #2c1810;
+  --color-card: #ffffff;
+  --color-card-foreground: #2c1810;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #2c1810;
+  --color-primary: #da291c;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f5e6d3;
+  --color-secondary-foreground: #3e2723;
+  --color-muted: #f0e4d7;
+  --color-muted-foreground: #6b5344;
+  --color-accent: #ffc72c;
+  --color-accent-foreground: #2c1810;
+  --color-destructive: #c62828;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e8d5c4;
+  --color-input: #f5ede4;
+  --color-ring: #da291c;
+  --color-success: #2e7d32;
+  --color-warning: #f9a825;
+  --color-info: #1565c0;
+  --color-cafe: #3e2723;
+  --color-cream: #fff8f0;
+  --color-latte: #d7ccc8;
+  --color-gold: #ffc72c;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+}
+
+/* Cozy evening cafe — optional dark toggle */
+.dark {
+  --color-background: #2c1810;
+  --color-foreground: #fff8f0;
+  --color-card: #3e2723;
+  --color-card-foreground: #fff8f0;
+  --color-popover: #3e2723;
+  --color-popover-foreground: #fff8f0;
+  --color-primary: #ff5252;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #4e342e;
+  --color-secondary-foreground: #fff8f0;
+  --color-muted: #4e342e;
+  --color-muted-foreground: #d7ccc8;
+  --color-accent: #ffc72c;
+  --color-accent-foreground: #2c1810;
+  --color-border: #5d4037;
+  --color-input: #4e342e;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: "Nunito Sans", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  background-image:
+    radial-gradient(ellipse at 0% 0%, rgba(218, 41, 28, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(255, 199, 44, 0.06) 0%, transparent 50%);
+  background-attachment: fixed;
+}
+
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d7ccc8;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #bcaaa4;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #5d4037;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6d4c41;
+}
+
+/* Restaurant brand stripe accent */
+.brand-stripe {
+  background: linear-gradient(90deg, #da291c 0%, #ffc72c 50%, #da291c 100%);
+  height: 3px;
+}
