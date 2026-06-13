@@ -36,25 +36,38 @@ Edit `server/.env` if your MongoDB URI or port differs.
 npm run seed
 ```
 
-### 4. Run frontend + backend together
+### 4. Run the app
 
 ```bash
-npm run dev:all
+npm run dev
 ```
 
-Or run separately:
+This starts both the API server (`http://localhost:5000`) and the frontend (`http://localhost:5173`).
 
-```bash
-npm run dev:server   # API at http://localhost:5000
-npm run dev          # Frontend at http://localhost:5173
-```
+### 5. Create your admin account
 
-## Demo Login
+Open `http://localhost:5173/signup` and register. The first account you create becomes your admin login.
 
-| Role | Credentials | After login |
-|------|-------------|-------------|
-| **Admin** | `admin@restmana.com` / `admin123` | Dashboard (backend management) |
-| **Employee** | `sarah@restmana.com` / `cashier123` | POS session → floor table selection → order view |
+## Authentication
+
+Login and signup authenticate against **MongoDB users** via the REST API:
+
+- Passwords are hashed with bcrypt before storage
+- JWT tokens are issued on successful login/signup (7-day expiry)
+- Protected routes validate the session against `GET /api/auth/me`
+- Signup creates a new **admin** account in MongoDB
+- Employee (cashier) accounts are created by an admin from the Employees page
+
+## Razorpay Payments
+
+1. Get **Key ID** and **Key Secret** from [Razorpay Dashboard](https://dashboard.razorpay.com/app/keys)
+2. Admin → **Payment Methods** → configure Razorpay gateway and enable it
+3. Or set in `server/.env`:
+   ```
+   RAZORPAY_KEY_ID=rzp_test_xxxxx
+   RAZORPAY_KEY_SECRET=your_secret
+   ```
+4. In POS, Card/UPI/Razorpay open **Razorpay Checkout**; Cash remains manual
 
 ## Routes
 

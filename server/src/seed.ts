@@ -1,5 +1,4 @@
 import 'dotenv/config'
-import bcrypt from 'bcryptjs'
 import { connectDB } from './config/db.js'
 import { User } from './models/User.js'
 import { Category } from './models/Category.js'
@@ -26,15 +25,6 @@ async function seed() {
     Promotion.deleteMany({}),
     Booking.deleteMany({}),
     Order.deleteMany({}),
-  ])
-
-  const adminHash = await bcrypt.hash('admin123', 10)
-  const cashierHash = await bcrypt.hash('cashier123', 10)
-
-  const [admin, cashier] = await User.insertMany([
-    { name: 'Admin User', email: 'admin@restmana.com', password: adminHash, role: 'admin', status: 'active' },
-    { name: 'Sarah Johnson', email: 'sarah@restmana.com', password: cashierHash, role: 'cashier', status: 'active' },
-    { name: 'Mike Chen', email: 'mike@restmana.com', password: cashierHash, role: 'cashier', status: 'active' },
   ])
 
   const categories = await Category.insertMany([
@@ -68,26 +58,27 @@ async function seed() {
     {
       name: 'Ground Floor',
       tables: [
-        { number: 1, seats: 2, status: 'available', x: 50, y: 50 },
-        { number: 2, seats: 4, status: 'occupied', x: 200, y: 50 },
-        { number: 3, seats: 4, status: 'reserved', x: 350, y: 50 },
-        { number: 4, seats: 6, status: 'available', x: 50, y: 200 },
+        { number: 1, seats: 2, active: true, status: 'available', x: 50, y: 50 },
+        { number: 2, seats: 4, active: true, status: 'occupied', x: 200, y: 50 },
+        { number: 3, seats: 4, active: true, status: 'reserved', x: 350, y: 50 },
+        { number: 4, seats: 6, active: true, status: 'available', x: 50, y: 200 },
       ],
     },
     {
       name: 'First Floor',
       tables: [
-        { number: 9, seats: 4, status: 'available', x: 80, y: 80 },
-        { number: 10, seats: 6, status: 'occupied', x: 250, y: 80 },
+        { number: 9, seats: 4, active: true, status: 'available', x: 80, y: 80 },
+        { number: 10, seats: 6, active: true, status: 'occupied', x: 250, y: 80 },
       ],
     },
-    { name: 'Terrace', tables: [{ number: 15, seats: 4, status: 'available', x: 100, y: 100 }] },
+    { name: 'Terrace', tables: [{ number: 15, seats: 4, active: true, status: 'available', x: 100, y: 100 }] },
   ])
 
   await PaymentMethod.insertMany([
     { type: 'cash', name: 'Cash', enabled: true },
     { type: 'card', name: 'Card', enabled: true },
     { type: 'upi', name: 'UPI', enabled: true, upiId: 'restmana@upi' },
+    { type: 'razorpay', name: 'Razorpay', enabled: true },
   ])
 
   await Coupon.insertMany([
@@ -106,8 +97,7 @@ async function seed() {
   ])
 
   console.log('Database seeded successfully!')
-  console.log('Admin: admin@restmana.com / admin123')
-  console.log('Employee: sarah@restmana.com / cashier123')
+  console.log('Register an admin account at /signup to get started.')
   process.exit(0)
 }
 

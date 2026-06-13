@@ -13,6 +13,7 @@ import sessionRoutes from './routes/sessions.js'
 import couponRoutes from './routes/coupons.js'
 import reportRoutes from './routes/reports.js'
 import { createCrudRouter } from './routes/crud.js'
+import paymentRoutes from './routes/payments.js'
 import { PaymentMethod } from './models/PaymentMethod.js'
 import { Coupon } from './models/Coupon.js'
 import { Promotion } from './models/Promotion.js'
@@ -39,6 +40,7 @@ app.use('/api/sessions', sessionRoutes)
 app.use('/api/coupons', couponRoutes)
 app.use('/api/reports', reportRoutes)
 app.use('/api/payment-methods', createCrudRouter(PaymentMethod))
+app.use('/api/payments', paymentRoutes)
 app.use('/api/promotions-list', createCrudRouter(Promotion))
 app.use('/api/bookings', createCrudRouter(Booking))
 

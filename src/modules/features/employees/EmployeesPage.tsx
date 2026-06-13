@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Archive, KeyRound, Trash2 } from 'lucide-react'
+import { Archive, KeyRound, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,12 +12,33 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ConfirmDialog, DataTable, PageHeader } from '@/components/shared'
 import { useEmployeeStore } from '@/store'
+import { ApiError } from '@/services/api'
 import type { Employee } from '@/types'
 
+type AddEmployeeForm = {
+  name: string
+  email: string
+  password: string
+  role: 'cashier' | 'admin'
+}
+
+const emptyForm: AddEmployeeForm = { name: '', email: '', password: '', role: 'cashier' }
+
 export default function EmployeesPage() {
-  const { employees, isLoading, fetchEmployees, archiveEmployee, deleteEmployee } = useEmployeeStore()
+  const { employees, isLoading, fetchEmployees, addEmployee, updateEmployee, archiveEmployee, deleteEmployee } =
+    useEmployeeStore()
+  const [addOpen, setAddOpen] = useState(false)
+  const [form, setForm] = useState<AddEmployeeForm>(emptyForm)
+  const [saving, setSaving] = useState(false)
   const [passwordEmployee, setPasswordEmployee] = useState<Employee | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [archiveId, setArchiveId] = useState<string | null>(null)
@@ -27,7 +48,36 @@ export default function EmployeesPage() {
     fetchEmployees()
   }, [fetchEmployees])
 
-  const handlePasswordChange = () => {
+  const handleAddEmployee = async () => {
+    if (!form.name.trim() || !form.email.trim() || !form.password) {
+      toast.error('Name, email, and password are required')
+      return
+    }
+    if (form.password.length < 6) {
+      toast.error('Password must be at least 6 characters')
+      return
+    }
+
+    setSaving(true)
+    try {
+      await addEmployee({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        role: form.role,
+      })
+      toast.success('User added successfully')
+      setAddOpen(false)
+      setForm(emptyForm)
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to add user')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handlePasswordChange = async () => {
+    if (!passwordEmployee) return
     if (passwords.newPassword.length < 6) {
       toast.error('Password must be at least 6 characters')
       return
@@ -36,14 +86,24 @@ export default function EmployeesPage() {
       toast.error('Passwords do not match')
       return
     }
-    toast.success(`Password updated for ${passwordEmployee?.name}`)
-    setPasswordEmployee(null)
-    setPasswords({ newPassword: '', confirmPassword: '' })
+    try {
+      await updateEmployee(passwordEmployee.id, { password: passwords.newPassword })
+      toast.success(`Password updated for ${passwordEmployee.name}`)
+      setPasswordEmployee(null)
+      setPasswords({ newPassword: '', confirmPassword: '' })
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to update password')
+    }
   }
 
   return (
     <div className="space-y-6 p-6">
-      <PageHeader title="Employees" description="Manage staff accounts and access roles" />
+      <PageHeader title="Users" description="Add and manage admin and employee accounts">
+        <Button onClick={() => { setForm(emptyForm); setAddOpen(true) }}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add User
+        </Button>
+      </PageHeader>
 
       <DataTable
         data={employees}
@@ -56,7 +116,7 @@ export default function EmployeesPage() {
             header: 'Role',
             cell: (e) => (
               <Badge variant={e.role === 'admin' ? 'default' : 'secondary'} className="capitalize">
-                {e.role}
+                {e.role === 'cashier' ? 'Employee' : e.role}
               </Badge>
             ),
           },
@@ -104,6 +164,64 @@ export default function EmployeesPage() {
         ]}
       />
 
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add User</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="add-name">Full Name</Label>
+              <Input
+                id="add-name"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Employee name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-email">Email</Label>
+              <Input
+                id="add-email"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="employee@restaurant.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-password">Password</Label>
+              <Input
+                id="add-password"
+                type="password"
+                value={form.password}
+                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                placeholder="Min. 6 characters"
+                minLength={6}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v as 'cashier' | 'admin' }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cashier">Employee (POS access)</SelectItem>
+                  <SelectItem value="admin">Admin (full access)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddEmployee} disabled={saving}>
+              {saving ? 'Adding...' : 'Add User'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!passwordEmployee} onOpenChange={(open) => !open && setPasswordEmployee(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -142,11 +260,13 @@ export default function EmployeesPage() {
       <ConfirmDialog
         open={!!archiveId}
         onOpenChange={(open) => !open && setArchiveId(null)}
-        title="Archive employee"
-        description="This employee will no longer be able to access the system."
-        onConfirm={() => {
-          if (archiveId) archiveEmployee(archiveId)
-          toast.success('Employee archived')
+        title="Archive user"
+        description="This user will no longer be able to access the system."
+        onConfirm={async () => {
+          if (archiveId) {
+            await archiveEmployee(archiveId)
+            toast.success('User archived')
+          }
         }}
         confirmLabel="Archive"
       />
@@ -154,11 +274,17 @@ export default function EmployeesPage() {
       <ConfirmDialog
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}
-        title="Delete employee"
+        title="Delete user"
         description="This action cannot be undone."
-        onConfirm={() => {
-          if (deleteId) deleteEmployee(deleteId)
-          toast.success('Employee deleted')
+        onConfirm={async () => {
+          if (deleteId) {
+            try {
+              await deleteEmployee(deleteId)
+              toast.success('User deleted')
+            } catch (err) {
+              toast.error(err instanceof ApiError ? err.message : 'Failed to delete user')
+            }
+          }
         }}
         confirmLabel="Delete"
         variant="destructive"

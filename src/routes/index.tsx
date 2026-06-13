@@ -4,9 +4,11 @@ import MainLayout from '@/layouts/MainLayout'
 import PosLayout from '@/layouts/PosLayout'
 import KdsLayout from '@/layouts/KdsLayout'
 import ProtectedRoute from '@/routes/ProtectedRoute'
+import GuestRoute from '@/routes/GuestRoute'
 import { RoleRoute } from '@/routes/RoleRoute'
 import LoginPage from '@/modules/features/auth/LoginPage'
 import SignupPage from '@/modules/features/auth/SignupPage'
+import EmployeeRegisterPage from '@/modules/features/auth/EmployeeRegisterPage'
 import DashboardPage from '@/modules/features/dashboard/DashboardPage'
 import { PosPage } from '@/modules/features/pos/PosPage'
 import OrdersPage from '@/modules/features/orders/OrdersPage'
@@ -29,7 +31,7 @@ function ForgotPasswordPage() {
     <div className="text-center space-y-2">
       <h2 className="text-lg font-semibold">Forgot Password</h2>
       <p className="text-sm text-muted-foreground">
-        Password reset is not available in demo mode. Contact your administrator.
+        Password reset is not available yet. Contact your administrator.
       </p>
     </div>
   )
@@ -42,11 +44,17 @@ export const router = createBrowserRouter([
     children: [{ index: true, element: <RoleRedirect /> }],
   },
   {
-    element: <AuthLayout />,
+    element: <GuestRoute />,
     children: [
-      { path: '/login', element: <LoginPage /> },
-      { path: '/signup', element: <SignupPage /> },
-      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      {
+        element: <AuthLayout />,
+        children: [
+          { path: '/login', element: <LoginPage /> },
+          { path: '/signup', element: <SignupPage /> },
+          { path: '/register/employee', element: <EmployeeRegisterPage /> },
+          { path: '/forgot-password', element: <ForgotPasswordPage /> },
+        ],
+      },
     ],
   },
   {

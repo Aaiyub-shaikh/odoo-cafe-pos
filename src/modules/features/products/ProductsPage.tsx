@@ -33,6 +33,8 @@ import {
 } from '@/components/ui/select'
 import { useProductStore, useCategoryStore } from '@/store'
 import { formatCurrency } from '@/utils'
+import { resolveProductImage } from '@/utils/productImage'
+import { ProductImageField } from './ProductImageField'
 import type { Product } from '@/types'
 
 const productSchema = z.object({
@@ -87,6 +89,8 @@ export default function ProductsPage() {
   })
 
   const categoryId = watch('categoryId')
+  const productName = watch('name')
+  const imageValue = watch('image') ?? ''
 
   const filteredProducts = useMemo(() => {
     const q = search.toLowerCase()
@@ -109,6 +113,7 @@ export default function ProductsPage() {
 
   const openEdit = (product: Product) => {
     setEditingProduct(product)
+    const imageUrl = product.image?.startsWith('http') ? product.image : ''
     reset({
       name: product.name,
       categoryId: product.categoryId,
@@ -116,7 +121,7 @@ export default function ProductsPage() {
       unit: product.unit,
       tax: product.tax,
       description: product.description ?? '',
-      image: product.image ?? '',
+      image: imageUrl,
     })
     setShowNewCategory(false)
     setFormOpen(true)
@@ -134,11 +139,13 @@ export default function ProductsPage() {
   }
 
   const onSubmit = async (values: ProductFormValues) => {
+    const image = resolveProductImage(values.image, editingProduct?.image, !!editingProduct)
+
     const payload = {
       ...values,
       description: values.description || undefined,
-      image: values.image || undefined,
-      active: true,
+      image,
+      active: editingProduct?.active ?? true,
     }
 
     if (editingProduct) {
@@ -332,10 +339,12 @@ export default function ProductsPage() {
               <Textarea id="description" {...register('description')} className="bg-secondary/50" rows={3} />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="image">Image URL</Label>
-              <Input id="image" {...register('image')} placeholder="https://..." className="bg-secondary/50" />
-            </div>
+            <ProductImageField
+              productName={productName}
+              value={imageValue}
+              onChange={(v) => setValue('image', v, { shouldDirty: true })}
+              existingImage={editingProduct?.image}
+            />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
@@ -356,9 +365,19 @@ export default function ProductsPage() {
                 <DialogDescription>Product details</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                {viewProduct.image && (
-                  <img src={viewProduct.image} alt={viewProduct.name} className="h-40 w-full rounded-lg object-cover" />
-                )}
+                <div className="h-40 w-full overflow-hidden rounded-lg border border-border bg-secondary">
+                  {viewProduct.image ? (
+                    <img
+                      src={viewProduct.image}
+                      alt={viewProduct.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                      <Package className="h-10 w-10 opacity-40" />
+                    </div>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-muted-foreground">Category</p>

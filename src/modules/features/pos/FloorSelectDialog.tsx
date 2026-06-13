@@ -95,29 +95,35 @@ export function FloorSelectDialog({ open, onOpenChange }: FloorSelectDialogProps
               <TabsTrigger key={floor.id} value={floor.id}>
                 {floor.name}
                 <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-[10px]">
-                  {floor.tables.length}
+                  {floor.tables.filter((t) => t.active !== false).length}
                 </Badge>
               </TabsTrigger>
             ))}
           </TabsList>
 
-          {floors.map((floor) => (
+          {floors.map((floor) => {
+            const activeTables = floor.tables.filter((t) => t.active !== false)
+            return (
             <TabsContent key={floor.id} value={floor.id}>
               <div
                 className="relative min-h-[280px] overflow-auto rounded-lg border border-border p-4 sm:min-h-[320px]"
                 style={FLOOR_GRID_STYLE}
               >
                 <div className="flex flex-wrap gap-4">
-                  {floor.tables.map((table) => (
+                  {activeTables.map((table) => (
                     <TablePicker key={table.id} table={table} onSelect={handleSelectTable} />
                   ))}
                 </div>
-                {floor.tables.length === 0 && (
-                  <p className="py-12 text-center text-muted-foreground">No tables on this floor</p>
+                {activeTables.length === 0 && (
+                  <p className="py-12 text-center text-muted-foreground">
+                    {floor.tables.length === 0
+                      ? 'No tables on this floor'
+                      : 'No active tables on this floor'}
+                  </p>
                 )}
               </div>
             </TabsContent>
-          ))}
+          )})}
         </Tabs>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">

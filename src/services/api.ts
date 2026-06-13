@@ -1,26 +1,10 @@
+import { resolveAuthToken, setAuthToken } from './authToken'
+
+export { setAuthToken }
+
 const API_BASE = import.meta.env.VITE_API_URL || '/api'
 
-function getToken(): string | null {
-  try {
-    const stored = localStorage.getItem('auth-storage')
-    if (!stored) return null
-    const parsed = JSON.parse(stored)
-    return parsed.state?.token ?? null
-  } catch {
-    return null
-  }
-}
-
-export function setAuthToken(token: string | null) {
-  try {
-    const stored = localStorage.getItem('auth-storage')
-    const parsed = stored ? JSON.parse(stored) : { state: {} }
-    parsed.state = { ...parsed.state, token }
-    localStorage.setItem('auth-storage', JSON.stringify(parsed))
-  } catch {
-    /* ignore */
-  }
-}
+const PUBLIC_PATHS = ['/auth/login', '/auth/signup', '/auth/signup/employee']
 
 export class ApiError extends Error {
   status: number
@@ -32,14 +16,20 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken()
+  const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p))
+  const token = isPublic ? null : resolveAuthToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   }
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers })
+  } catch {
+    throw new ApiError(0, 'Unable to connect to the server. Please try again in a moment.')
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }))
@@ -61,6 +51,12 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ name, email, password }),
     }),
+  signupEmployee: (name: string, email: string, password: string) =>
+    api<{ token: string; user: Record<string, unknown> }>('/auth/signup/employee', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password }),
+    }),
+  me: () => api<Record<string, unknown>>('/auth/me'),
   updateProfile: (data: Record<string, unknown>) =>
     api<Record<string, unknown>>('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
 }
@@ -102,8 +98,15 @@ export const ordersApi = {
 export const floorsApi = {
   getAll: () => api<Record<string, unknown>[]>('/floors'),
   create: (name: string) => api<Record<string, unknown>>('/floors', { method: 'POST', body: JSON.stringify({ name }) }),
+  update: (floorId: string, name: string) =>
+    api<Record<string, unknown>>(`/floors/${floorId}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+  delete: (floorId: string) => api<{ success: boolean }>(`/floors/${floorId}`, { method: 'DELETE' }),
+  addTable: (floorId: string, data: Record<string, unknown>) =>
+    api<Record<string, unknown>>(`/floors/${floorId}/tables`, { method: 'POST', body: JSON.stringify(data) }),
   updateTable: (floorId: string, tableId: string, data: Record<string, unknown>) =>
     api<Record<string, unknown>>(`/floors/${floorId}/tables/${tableId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteTable: (floorId: string, tableId: string) =>
+    api<Record<string, unknown>>(`/floors/${floorId}/tables/${tableId}`, { method: 'DELETE' }),
 }
 
 export const employeesApi = {
@@ -118,6 +121,23 @@ export const paymentsApi = {
   getAll: () => api<Record<string, unknown>[]>('/payment-methods'),
   update: (id: string, data: Record<string, unknown>) =>
     api<Record<string, unknown>>(`/payment-methods/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+}
+
+export const razorpayApi = {
+  getSettings: () => api<Record<string, unknown>>('/payments/razorpay/settings'),
+  updateSettings: (data: Record<string, unknown>) =>
+    api<Record<string, unknown>>('/payments/razorpay/settings', { method: 'PUT', body: JSON.stringify(data) }),
+  getConfig: () => api<Record<string, unknown>>('/payments/razorpay/config'),
+  createOrder: (amount: number, receipt?: string) =>
+    api<{ orderId: string; amount: number; currency: string; keyId: string }>('/payments/razorpay/create-order', {
+      method: 'POST',
+      body: JSON.stringify({ amount, receipt }),
+    }),
+  verify: (data: Record<string, string>) =>
+    api<{ verified: boolean; paymentId: string; orderId: string }>('/payments/razorpay/verify', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 }
 
 export const couponsApi = {

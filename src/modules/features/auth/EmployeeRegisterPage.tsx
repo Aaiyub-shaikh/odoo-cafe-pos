@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useAuthStore } from '@/store'
-import { getDefaultRoute } from '@/utils/permissions'
+import { useAuthStore, useSessionStore } from '@/store'
 
-export default function SignupPage() {
+export default function EmployeeRegisterPage() {
   const navigate = useNavigate()
-  const signup = useAuthStore((s) => s.signup)
+  const signupEmployee = useAuthStore((s) => s.signupEmployee)
+  const openSession = useSessionStore((s) => s.openSession)
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -28,22 +28,23 @@ export default function SignupPage() {
     }
 
     setLoading(true)
-    const result = await signup(name, email, password)
+    const result = await signupEmployee(name, email, password)
     setLoading(false)
 
-    if (result.success) {
-      navigate(getDefaultRoute('admin'))
+    if (!result.success) {
+      setError(result.error)
       return
     }
 
-    setError(result.error)
+    openSession()
+    navigate('/pos')
   }
 
   return (
     <Card className="border-border bg-card shadow-lg">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-xl">Create account</CardTitle>
-        <CardDescription>Register as restaurant admin</CardDescription>
+        <CardTitle className="text-xl">Employee Registration</CardTitle>
+        <CardDescription>Create your cashier account to access the POS terminal</CardDescription>
       </CardHeader>
 
       <form onSubmit={handleSubmit}>
@@ -115,20 +116,20 @@ export default function SignupPage() {
                 Creating account...
               </>
             ) : (
-              'Register'
+              'Register as Employee'
             )}
           </Button>
 
           <p className="text-center text-sm text-muted-foreground">
-            Employee?{' '}
-            <Link to="/register/employee" className="font-medium text-primary hover:underline">
-              Register here
-            </Link>
-          </p>
-          <p className="text-center text-sm text-muted-foreground">
             Already have an account?{' '}
             <Link to="/login" className="font-medium text-primary hover:underline">
               Sign in
+            </Link>
+          </p>
+          <p className="text-center text-sm text-muted-foreground">
+            Restaurant owner?{' '}
+            <Link to="/signup" className="font-medium text-primary hover:underline">
+              Register as Admin
             </Link>
           </p>
         </CardFooter>
