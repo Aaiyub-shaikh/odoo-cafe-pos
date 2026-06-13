@@ -22,16 +22,35 @@ function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
 
   return (
     <nav className="flex flex-col gap-1 px-2">
-      {navItems.map(({ to, label, icon: Icon }) => {
-        const link = (
+      {navItems.map(({ to, label, icon: Icon, external }) => {
+        const className = cn(
+          'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
+          collapsed && 'justify-center px-2',
+          external
+            ? 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+            : undefined
+        )
+
+        const link = external ? (
+          <a
+            key={to}
+            href={to}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onNavigate}
+            className={className}
+          >
+            <Icon className="h-4 w-4 shrink-0" />
+            {!collapsed && <span className="truncate">{label}</span>}
+          </a>
+        ) : (
           <NavLink
             key={to}
             to={to}
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
-                collapsed && 'justify-center px-2',
+                className,
                 isActive
                   ? 'bg-primary/10 text-primary font-semibold'
                   : 'text-muted-foreground hover:bg-secondary hover:text-foreground'

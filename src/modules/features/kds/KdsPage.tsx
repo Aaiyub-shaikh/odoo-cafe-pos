@@ -26,13 +26,13 @@ function nextStatus(current: KitchenStatus): KitchenStatus {
 }
 
 export function KdsPage() {
-  const { orders, fetchOrders, updateKitchenItemStatus } = useOrderStore()
+  const { orders, fetchKitchenOrders, updateKitchenItemStatus } = useOrderStore()
 
   useEffect(() => {
-    fetchOrders()
-    const interval = setInterval(fetchOrders, 30000)
+    fetchKitchenOrders()
+    const interval = setInterval(fetchKitchenOrders, 30000)
     return () => clearInterval(interval)
-  }, [fetchOrders])
+  }, [fetchKitchenOrders])
 
   const kitchenOrders = useMemo(
     () => orders.filter((o) => o.status === 'draft' && o.items.some((i) => i.kitchenStatus !== 'completed')),

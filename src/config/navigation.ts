@@ -11,15 +11,18 @@ import {
   BarChart3,
   Settings,
   CalendarDays,
+  ChefHat,
   type LucideIcon,
 } from 'lucide-react'
 import type { UserRole } from '@/types'
 import { isAdmin } from '@/utils/permissions'
+import { KDS_URL } from '@/config/kds'
 
 export interface NavItem {
   to: string
   label: string
   icon: LucideIcon
+  external?: boolean
 }
 
 /** Admin backend navigation — no POS Terminal */
@@ -33,6 +36,7 @@ export const adminNavItems: NavItem[] = [
   { to: '/payment-methods', label: 'Payment Methods', icon: CreditCard },
   { to: '/promotions', label: 'Coupons & Promotions', icon: Ticket },
   { to: '/employees', label: 'Users', icon: UserCog },
+  { to: KDS_URL, label: 'Kitchen Display', icon: ChefHat, external: true },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/bookings', label: 'Bookings', icon: CalendarDays },
   { to: '/settings', label: 'Settings', icon: Settings },

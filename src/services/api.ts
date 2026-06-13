@@ -6,6 +6,13 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api'
 
 const PUBLIC_PATHS = ['/auth/login', '/auth/signup', '/auth/signup/employee']
 
+function isPublicApiPath(path: string): boolean {
+  if (PUBLIC_PATHS.some((p) => path.startsWith(p))) return true
+  if (path === '/orders/kitchen') return true
+  if (/^\/orders\/[^/]+\/items\/[^/]+\/kitchen$/.test(path)) return true
+  return false
+}
+
 export class ApiError extends Error {
   status: number
 
@@ -16,7 +23,7 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p))
+  const isPublic = isPublicApiPath(path)
   const token = isPublic ? null : resolveAuthToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -145,7 +152,10 @@ export const couponsApi = {
   create: (data: Record<string, unknown>) => api<Record<string, unknown>>('/coupon-items', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: string, data: Record<string, unknown>) => api<Record<string, unknown>>(`/coupon-items/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   delete: (id: string) => api<{ success: boolean }>(`/coupon-items/${id}`, { method: 'DELETE' }),
-  validate: (code: string) => api<Record<string, unknown> | null>(`/coupons/validate/${encodeURIComponent(code)}`),
+  validate: (code: string, customerId?: string) =>
+    api<{ valid: boolean; coupon?: Record<string, unknown>; error?: string }>(
+      `/coupons/validate/${encodeURIComponent(code)}${customerId ? `?customerId=${encodeURIComponent(customerId)}` : ''}`
+    ),
 }
 
 export const promotionsApi = {
@@ -153,6 +163,11 @@ export const promotionsApi = {
   create: (data: Record<string, unknown>) => api<Record<string, unknown>>('/promotions-list', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: string, data: Record<string, unknown>) => api<Record<string, unknown>>(`/promotions-list/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   delete: (id: string) => api<{ success: boolean }>(`/promotions-list/${id}`, { method: 'DELETE' }),
+  evaluate: (cart: Record<string, unknown>[], subtotal: number) =>
+    api<{ discount: number; promotion: { id: string; name: string; discount: number } | null }>(
+      '/promotions/evaluate',
+      { method: 'POST', body: JSON.stringify({ cart, subtotal }) }
+    ),
 }
 
 export const bookingsApi = {

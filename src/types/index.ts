@@ -90,6 +90,8 @@ export interface Order {
   razorpayPaymentId?: string
   razorpayOrderId?: string
   couponCode?: string
+  promotionId?: string
+  promotionName?: string
   employeeId: string
   employeeName: string
   sessionId: string
@@ -123,10 +125,12 @@ export interface Coupon {
   fixedAmount?: number
   active: boolean
   usageCount: number
+  firstTimeUserOnly?: boolean
+  maxUsesPerUser?: number | null
   createdAt: string
 }
 
-export type PromotionType = 'product' | 'order'
+export type PromotionType = 'product' | 'order' | 'category'
 
 export interface Promotion {
   id: string
@@ -138,6 +142,7 @@ export interface Promotion {
   discountType: 'percentage' | 'fixed'
   active: boolean
   productIds?: string[]
+  categoryIds?: string[]
   createdAt: string
 }
 
@@ -159,6 +164,7 @@ export interface CartItem {
   quantity: number
   unitPrice: number
   tax: number
+  categoryId?: string
   image?: string
 }
 

@@ -1,4 +1,5 @@
 import type { UserRole } from '@/types'
+import { isKdsStandalonePort } from '@/config/kds'
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Admin',
@@ -14,6 +15,7 @@ export function isCashier(role: UserRole) {
 }
 
 export function getDefaultRoute(role: UserRole) {
+  if (isKdsStandalonePort()) return '/kds'
   return role === 'admin' ? '/dashboard' : '/pos'
 }
 

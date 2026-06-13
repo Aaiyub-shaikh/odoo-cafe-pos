@@ -20,7 +20,7 @@ interface CouponDialogProps {
 }
 
 export function CouponDialog({ open, onOpenChange }: CouponDialogProps) {
-  const { couponCode, couponDiscount, applyCoupon, removeCoupon } = usePosStore()
+  const { couponCode, couponDiscount, selectedCustomer, applyCoupon, removeCoupon } = usePosStore()
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
 
@@ -30,13 +30,13 @@ export function CouponDialog({ open, onOpenChange }: CouponDialogProps) {
       setError('Enter a coupon code')
       return
     }
-    const success = await applyCoupon(trimmed)
-    if (success) {
+    const result = await applyCoupon(trimmed)
+    if (result.success) {
       setError('')
       setCode('')
       onOpenChange(false)
     } else {
-      setError('Invalid or expired coupon code')
+      setError(result.error ?? 'Invalid or expired coupon code')
     }
   }
 
@@ -106,7 +106,9 @@ export function CouponDialog({ open, onOpenChange }: CouponDialogProps) {
               </motion.p>
             )}
             <p className="text-xs text-muted-foreground text-center">
-              Try: SAVE10 (10% off) or FLAT50 (₹50 off)
+              {selectedCustomer
+                ? `Applying for ${selectedCustomer.name}`
+                : 'Some coupons require a customer to be selected first'}
             </p>
           </div>
         )}

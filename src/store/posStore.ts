@@ -1,13 +1,24 @@
 import { create } from 'zustand'
 import type { CartItem, Customer, DateFilter, ReportFilters } from '@/types'
+import { findBestPromotion } from '@/utils/promotionEngine'
 import { usePromotionStore } from './promotionStore'
+
+interface AppliedCoupon {
+  code: string
+  percentage?: number
+  fixedAmount?: number
+}
 
 interface PosState {
   cart: CartItem[]
   selectedCustomer: Customer | null
   selectedTableId: string | null
   couponCode: string | null
+  appliedCoupon: AppliedCoupon | null
   couponDiscount: number
+  promotionId: string | null
+  promotionName: string | null
+  promotionDiscount: number
   searchQuery: string
   selectedCategoryId: string | null
   addToCart: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void
@@ -16,14 +27,24 @@ interface PosState {
   clearCart: () => void
   setCustomer: (customer: Customer | null) => void
   setTable: (tableId: string | null) => void
-  applyCoupon: (code: string) => Promise<boolean>
+  applyCoupon: (code: string) => Promise<{ success: boolean; error?: string }>
   removeCoupon: () => void
+  recalculateDiscounts: () => void
   setSearchQuery: (query: string) => void
   setSelectedCategory: (categoryId: string | null) => void
   getSubtotal: () => number
   getTax: () => number
   getDiscount: () => number
+  getPromotionDiscount: () => number
+  getCouponDiscount: () => number
   getTotal: () => number
+}
+
+function calcCouponDiscount(coupon: AppliedCoupon | null, subtotal: number): number {
+  if (!coupon) return 0
+  if (coupon.percentage) return subtotal * (coupon.percentage / 100)
+  if (coupon.fixedAmount) return coupon.fixedAmount
+  return 0
 }
 
 export const usePosStore = create<PosState>((set, get) => ({
@@ -31,7 +52,11 @@ export const usePosStore = create<PosState>((set, get) => ({
   selectedCustomer: null,
   selectedTableId: null,
   couponCode: null,
+  appliedCoupon: null,
   couponDiscount: 0,
+  promotionId: null,
+  promotionName: null,
+  promotionDiscount: 0,
   searchQuery: '',
   selectedCategoryId: null,
   addToCart: (item) => {
@@ -48,9 +73,11 @@ export const usePosStore = create<PosState>((set, get) => ({
       }
       return { cart: [...s.cart, { ...item, quantity: item.quantity ?? 1 }] }
     })
+    get().recalculateDiscounts()
   },
   removeFromCart: (productId) => {
     set((s) => ({ cart: s.cart.filter((c) => c.productId !== productId) }))
+    get().recalculateDiscounts()
   },
   updateQuantity: (productId, quantity) => {
     if (quantity <= 0) {
@@ -60,31 +87,89 @@ export const usePosStore = create<PosState>((set, get) => ({
     set((s) => ({
       cart: s.cart.map((c) => (c.productId === productId ? { ...c, quantity } : c)),
     }))
+    get().recalculateDiscounts()
   },
-  clearCart: () => set({ cart: [], selectedCustomer: null, selectedTableId: null, couponCode: null, couponDiscount: 0 }),
-  setCustomer: (customer) => set({ selectedCustomer: customer }),
+  clearCart: () =>
+    set({
+      cart: [],
+      selectedCustomer: null,
+      selectedTableId: null,
+      couponCode: null,
+      appliedCoupon: null,
+      couponDiscount: 0,
+      promotionId: null,
+      promotionName: null,
+      promotionDiscount: 0,
+    }),
+  setCustomer: (customer) => {
+    set({ selectedCustomer: customer })
+    const { appliedCoupon, couponCode } = get()
+    if (appliedCoupon && couponCode) {
+      void usePromotionStore.getState().validateCoupon(couponCode, customer?.id).then((result) => {
+        if (!result.coupon) {
+          set({ couponCode: null, appliedCoupon: null, couponDiscount: 0 })
+        }
+        get().recalculateDiscounts()
+      })
+      return
+    }
+    get().recalculateDiscounts()
+  },
   setTable: (tableId) => set({ selectedTableId: tableId }),
   applyCoupon: async (code) => {
-    const coupon = await usePromotionStore.getState().validateCoupon(code)
-    if (!coupon) return false
+    const customerId = get().selectedCustomer?.id
+    const result = await usePromotionStore.getState().validateCoupon(code, customerId)
+    if (!result.coupon) {
+      return { success: false, error: result.error }
+    }
     const subtotal = get().getSubtotal()
-    let discount = 0
-    if (coupon.percentage) discount = subtotal * (coupon.percentage / 100)
-    if (coupon.fixedAmount) discount = coupon.fixedAmount
-    set({ couponCode: coupon.code, couponDiscount: discount })
-    return true
+    const discount = calcCouponDiscount(
+      {
+        code: result.coupon.code,
+        percentage: result.coupon.percentage,
+        fixedAmount: result.coupon.fixedAmount,
+      },
+      subtotal
+    )
+    set({
+      couponCode: result.coupon.code,
+      appliedCoupon: {
+        code: result.coupon.code,
+        percentage: result.coupon.percentage,
+        fixedAmount: result.coupon.fixedAmount,
+      },
+      couponDiscount: discount,
+    })
+    return { success: true }
   },
-  removeCoupon: () => set({ couponCode: null, couponDiscount: 0 }),
+  removeCoupon: () => set({ couponCode: null, appliedCoupon: null, couponDiscount: 0 }),
+  recalculateDiscounts: () => {
+    const cart = get().cart
+    const subtotal = get().getSubtotal()
+    const promotions = usePromotionStore.getState().promotions.filter((p) => p.active)
+    const best = findBestPromotion(promotions, cart, subtotal)
+
+    const couponDiscount = calcCouponDiscount(get().appliedCoupon, subtotal)
+
+    set({
+      promotionId: best?.promotion.id ?? null,
+      promotionName: best?.promotion.name ?? null,
+      promotionDiscount: best?.discount ?? 0,
+      couponDiscount,
+    })
+  },
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSelectedCategory: (categoryId) => set({ selectedCategoryId: categoryId }),
   getSubtotal: () => get().cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
   getTax: () => get().cart.reduce((sum, item) => sum + (item.unitPrice * item.quantity * item.tax) / 100, 0),
-  getDiscount: () => get().couponDiscount,
+  getPromotionDiscount: () => get().promotionDiscount,
+  getCouponDiscount: () => get().couponDiscount,
+  getDiscount: () => get().promotionDiscount + get().couponDiscount,
   getTotal: () => {
     const subtotal = get().getSubtotal()
     const tax = get().getTax()
     const discount = get().getDiscount()
-    return subtotal + tax - discount
+    return Math.max(0, subtotal + tax - discount)
   },
 }))
 

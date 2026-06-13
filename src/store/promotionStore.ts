@@ -2,6 +2,11 @@ import { create } from 'zustand'
 import type { Coupon, Promotion } from '@/types'
 import { couponsApi, promotionsApi } from '@/services/api'
 
+export interface CouponValidationResult {
+  coupon: Coupon | null
+  error?: string
+}
+
 interface PromotionState {
   coupons: Coupon[]
   promotions: Promotion[]
@@ -13,7 +18,7 @@ interface PromotionState {
   addPromotion: (promo: Omit<Promotion, 'id' | 'createdAt'>) => Promise<void>
   updatePromotion: (id: string, data: Partial<Promotion>) => Promise<void>
   deletePromotion: (id: string) => Promise<void>
-  validateCoupon: (code: string) => Promise<Coupon | null>
+  validateCoupon: (code: string, customerId?: string) => Promise<CouponValidationResult>
 }
 
 export const usePromotionStore = create<PromotionState>((set) => ({
@@ -63,12 +68,15 @@ export const usePromotionStore = create<PromotionState>((set) => ({
     await promotionsApi.delete(id)
     set((s) => ({ promotions: s.promotions.filter((p) => p.id !== id) }))
   },
-  validateCoupon: async (code) => {
+  validateCoupon: async (code, customerId) => {
     try {
-      const coupon = await couponsApi.validate(code)
-      return (coupon as unknown as Coupon) ?? null
+      const result = await couponsApi.validate(code, customerId)
+      if (!result.valid) {
+        return { coupon: null, error: result.error ?? 'Invalid or expired coupon code' }
+      }
+      return { coupon: result.coupon as unknown as Coupon }
     } catch {
-      return null
+      return { coupon: null, error: 'Could not validate coupon' }
     }
   },
 }))

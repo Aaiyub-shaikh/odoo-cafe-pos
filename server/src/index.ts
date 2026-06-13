@@ -11,6 +11,7 @@ import floorRoutes from './routes/floors.js'
 import employeeRoutes from './routes/employees.js'
 import sessionRoutes from './routes/sessions.js'
 import couponRoutes from './routes/coupons.js'
+import promotionRoutes from './routes/promotions.js'
 import reportRoutes from './routes/reports.js'
 import { createCrudRouter } from './routes/crud.js'
 import paymentRoutes from './routes/payments.js'
@@ -38,6 +39,7 @@ app.use('/api/floors', floorRoutes)
 app.use('/api/employees', employeeRoutes)
 app.use('/api/sessions', sessionRoutes)
 app.use('/api/coupons', couponRoutes)
+app.use('/api/promotions', promotionRoutes)
 app.use('/api/reports', reportRoutes)
 app.use('/api/payment-methods', createCrudRouter(PaymentMethod))
 app.use('/api/payments', paymentRoutes)

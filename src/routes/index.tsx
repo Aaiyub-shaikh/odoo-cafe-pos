@@ -39,6 +39,10 @@ function ForgotPasswordPage() {
 
 export const router = createBrowserRouter([
   {
+    element: <KdsLayout />,
+    children: [{ path: '/kds', element: <KdsPage /> }],
+  },
+  {
     path: '/',
     element: <ProtectedRoute />,
     children: [{ index: true, element: <RoleRedirect /> }],
@@ -91,10 +95,6 @@ export const router = createBrowserRouter([
             children: [{ path: '/pos', element: <PosPage /> }],
           },
         ],
-      },
-      {
-        element: <KdsLayout />,
-        children: [{ path: '/kds', element: <KdsPage /> }],
       },
       { path: '*', element: <RoleRedirect /> },
     ],
