@@ -38,7 +38,7 @@ async function validateCouponForCustomer(
     if (!customerId) {
       return { valid: false, error: 'Select a customer — this coupon is for first-time customers only' }
     }
-    const paidOrders = await Order.countDocuments({ customerId, status: 'paid' })
+    const paidOrders = await Order.countDocuments({ customerId, status: { $in: ['paid', 'CONFIRMED'] } })
     const customer = await Customer.findById(customerId)
     if (paidOrders > 0 || (customer && customer.totalOrders > 0)) {
       return { valid: false, error: 'This coupon is for first-time customers only' }

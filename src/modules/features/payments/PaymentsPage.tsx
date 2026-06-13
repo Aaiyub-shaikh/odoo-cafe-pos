@@ -102,19 +102,25 @@ export default function PaymentsPage() {
             />
           </div>
         </CardHeader>
-        {method.type === 'upi' && method.enabled && !razorpayEnabled && (
+        {method.type === 'upi' && (
           <CardContent className="space-y-4 border-t border-border pt-4">
             <div className="space-y-2">
-              <Label htmlFor="upiId">UPI ID (manual QR fallback)</Label>
+              <Label htmlFor="upiId">UPI ID (shown as QR at POS)</Label>
               <div className="flex gap-2">
                 <Input
                   id="upiId"
                   value={upiId}
                   onChange={(e) => setUpiId(e.target.value)}
                   placeholder="yourname@upi"
+                  disabled={!method.enabled}
                 />
-                <Button onClick={handleUpiSave}>Save</Button>
+                <Button onClick={handleUpiSave} disabled={!method.enabled}>
+                  Save
+                </Button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Cashiers see this UPI ID and QR when UPI is enabled at checkout.
+              </p>
             </div>
           </CardContent>
         )}
@@ -211,9 +217,14 @@ export default function PaymentsPage() {
       </Card>
 
       <div>
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground">POS Payment Methods</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {methods.map(renderMethod)}
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+          POS Payment Methods (Cash, Card, UPI)
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Toggle each method on or off for the POS checkout. Disabled methods are hidden from cashiers.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {methods.filter((m) => m.type !== 'razorpay').map(renderMethod)}
         </div>
       </div>
     </div>

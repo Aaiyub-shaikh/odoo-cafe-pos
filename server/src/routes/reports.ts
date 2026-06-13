@@ -6,9 +6,11 @@ import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
 
+const PAID_ORDER_STATUSES = ['paid', 'CONFIRMED']
+
 router.get('/dashboard', authMiddleware, async (_req: Request, res: Response) => {
   try {
-    const paidOrders = await Order.find({ status: 'paid' })
+    const paidOrders = await Order.find({ status: { $in: PAID_ORDER_STATUSES } })
     const revenue = paidOrders.reduce((s, o) => s + o.total, 0)
     const totalOrders = paidOrders.length
     const avgOrderValue = totalOrders ? revenue / totalOrders : 0
@@ -33,7 +35,7 @@ router.get('/dashboard', authMiddleware, async (_req: Request, res: Response) =>
 router.get('/sales-trend', authMiddleware, async (_req: Request, res: Response) => {
   try {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    const orders = await Order.find({ status: 'paid' })
+    const orders = await Order.find({ status: { $in: PAID_ORDER_STATUSES } })
     const data = days.map((date, i) => {
       const dayOrders = orders.filter((_, idx) => idx % 7 === i)
       return {
@@ -51,7 +53,7 @@ router.get('/sales-trend', authMiddleware, async (_req: Request, res: Response) 
 
 router.get('/top-products', authMiddleware, async (_req: Request, res: Response) => {
   try {
-    const orders = await Order.find({ status: 'paid' })
+    const orders = await Order.find({ status: { $in: PAID_ORDER_STATUSES } })
     const map = new Map<string, { name: string; quantity: number; revenue: number }>()
 
     for (const order of orders) {
@@ -78,7 +80,7 @@ router.get('/top-categories', authMiddleware, async (_req: Request, res: Respons
   try {
     const products = await Product.find()
     const categories = await Category.find()
-    const orders = await Order.find({ status: 'paid' })
+    const orders = await Order.find({ status: { $in: PAID_ORDER_STATUSES } })
     const map = new Map<string, { name: string; color: string; quantity: number; revenue: number }>()
 
     for (const order of orders) {

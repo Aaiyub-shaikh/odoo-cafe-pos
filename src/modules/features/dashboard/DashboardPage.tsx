@@ -108,6 +108,8 @@ export default function DashboardPage() {
     fetchOrders()
     fetchCustomers()
     fetchFloors()
+    const interval = setInterval(fetchOrders, 15000)
+    return () => clearInterval(interval)
   }, [fetchOrders, fetchCustomers, fetchFloors])
 
   const displayStats = useMemo(() => {

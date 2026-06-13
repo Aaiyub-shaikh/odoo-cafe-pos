@@ -23,7 +23,12 @@ const orderSchema = new Schema(
     tax: { type: Number, required: true },
     discount: { type: Number, default: 0 },
     total: { type: Number, required: true },
-    status: { type: String, enum: ['draft', 'paid', 'cancelled'], default: 'draft' },
+    status: {
+      type: String,
+      enum: ['draft', 'paid', 'cancelled', 'PENDING_PAYMENT', 'CONFIRMED'],
+      default: 'PENDING_PAYMENT',
+    },
+    paymentStatus: { type: String, enum: ['PENDING', 'SUCCESS', 'FAILED'], default: 'PENDING' },
     paymentMethod: { type: String, enum: ['cash', 'card', 'upi', 'razorpay'] },
     razorpayPaymentId: { type: String },
     razorpayOrderId: { type: String },

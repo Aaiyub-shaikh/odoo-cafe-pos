@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import { createServer } from 'http'
 import express from 'express'
 import cors from 'cors'
 import { connectDB } from './config/db.js'
@@ -15,6 +16,9 @@ import promotionRoutes from './routes/promotions.js'
 import reportRoutes from './routes/reports.js'
 import { createCrudRouter } from './routes/crud.js'
 import paymentRoutes from './routes/payments.js'
+import fakePaymentRoutes from './routes/payment.routes.js'
+import { initSocket } from './socket.js'
+import { getAllowedOrigins } from './utils/corsOrigins.js'
 import { PaymentMethod } from './models/PaymentMethod.js'
 import { Coupon } from './models/Coupon.js'
 import { Promotion } from './models/Promotion.js'
@@ -23,7 +27,12 @@ import { Booking } from './models/Booking.js'
 const app = express()
 const PORT = process.env.PORT || 5000
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173', credentials: true }))
+app.use(
+  cors({
+    origin: getAllowedOrigins(),
+    credentials: true,
+  })
+)
 app.use(express.json())
 
 app.get('/api/health', (_req, res) => {
@@ -43,6 +52,7 @@ app.use('/api/promotions', promotionRoutes)
 app.use('/api/reports', reportRoutes)
 app.use('/api/payment-methods', createCrudRouter(PaymentMethod))
 app.use('/api/payments', paymentRoutes)
+app.use('/api/payment', fakePaymentRoutes)
 app.use('/api/promotions-list', createCrudRouter(Promotion))
 app.use('/api/bookings', createCrudRouter(Booking))
 
@@ -51,7 +61,9 @@ app.use('/api/coupon-items', createCrudRouter(Coupon))
 
 async function start() {
   await connectDB()
-  app.listen(PORT, () => {
+  const httpServer = createServer(app)
+  initSocket(httpServer)
+  httpServer.listen(PORT, () => {
     console.log(`API server running on http://localhost:${PORT}`)
   })
 }

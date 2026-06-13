@@ -33,6 +33,13 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchOrders()
+    const interval = setInterval(fetchOrders, 10000)
+    const onFocus = () => fetchOrders()
+    window.addEventListener('focus', onFocus)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+    }
   }, [fetchOrders])
 
   const sortedOrders = useMemo(
@@ -41,7 +48,7 @@ export default function OrdersPage() {
   )
 
   const openEdit = (order: Order) => {
-    if (order.status === 'paid') return
+    if (order.status === 'paid' || order.status === 'CONFIRMED') return
     setEditOrder(order)
     setEditForm({ customerName: order.customerName ?? '', status: order.status })
   }
@@ -88,6 +95,15 @@ export default function OrdersPage() {
             cell: (order) => formatCurrency(order.total),
           },
           {
+            key: 'payment',
+            header: 'Payment',
+            cell: (order) => (
+              <Badge variant="outline" className="capitalize">
+                {order.paymentStatus ?? (order.status === 'CONFIRMED' || order.status === 'paid' ? 'SUCCESS' : 'PENDING')}
+              </Badge>
+            ),
+          },
+          {
             key: 'status',
             header: 'Status',
             cell: (order) => (
@@ -106,7 +122,7 @@ export default function OrdersPage() {
             header: 'Actions',
             className: 'text-right',
             cell: (order) => {
-              const isReadOnly = order.status === 'paid'
+              const isReadOnly = order.status === 'paid' || order.status === 'CONFIRMED'
               return (
                 <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                   <Button variant="ghost" size="icon" onClick={() => setViewOrder(order)} title="View">

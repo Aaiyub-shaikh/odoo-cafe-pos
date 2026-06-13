@@ -15,19 +15,25 @@ import { Order } from './models/Order.js'
 async function seed() {
   await connectDB()
 
-  await Promise.all([
-    User.deleteMany({}),
-    Category.deleteMany({}),
-    Product.deleteMany({}),
-    Customer.deleteMany({}),
-    Floor.deleteMany({}),
-    PaymentMethod.deleteMany({}),
-    Coupon.deleteMany({}),
-    CouponUsage.deleteMany({}),
-    Promotion.deleteMany({}),
-    Booking.deleteMany({}),
-    Order.deleteMany({}),
-  ])
+  // Prevent accidental data loss: require explicit env var to run destructive deletes
+  if (process.env.SEED_FORCE === 'true') {
+    await Promise.all([
+      User.deleteMany({}),
+      Category.deleteMany({}),
+      Product.deleteMany({}),
+      Customer.deleteMany({}),
+      Floor.deleteMany({}),
+      PaymentMethod.deleteMany({}),
+      Coupon.deleteMany({}),
+      CouponUsage.deleteMany({}),
+      Promotion.deleteMany({}),
+      Booking.deleteMany({}),
+      Order.deleteMany({}),
+    ])
+    console.log('Destructive seed: collections cleared (SEED_FORCE=true)')
+  } else {
+    console.log('SEED_FORCE not set — skipping destructive deletes. To wipe DB, run with SEED_FORCE=true npm run seed')
+  }
 
   const categories = await Category.insertMany([
     { name: 'Starters', color: '#da291c' },
@@ -80,7 +86,7 @@ async function seed() {
     { type: 'cash', name: 'Cash', enabled: true },
     { type: 'card', name: 'Card', enabled: true },
     { type: 'upi', name: 'UPI', enabled: true, upiId: 'restmana@upi' },
-    { type: 'razorpay', name: 'Razorpay', enabled: true },
+    { type: 'razorpay', name: 'Razorpay', enabled: false },
   ])
 
   await Coupon.insertMany([

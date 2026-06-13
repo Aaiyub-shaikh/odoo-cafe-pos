@@ -100,7 +100,7 @@ export default function ReportsPage() {
       if (filters.employeeId && o.employeeId !== filters.employeeId) return false
       if (filters.sessionId && o.sessionId !== filters.sessionId) return false
       if (filters.productId && !o.items.some((i) => i.productId === filters.productId)) return false
-      return o.status === 'paid'
+      return o.status === 'paid' || o.status === 'CONFIRMED'
     })
   }, [orders, filters])
 

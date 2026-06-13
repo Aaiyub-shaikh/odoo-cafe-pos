@@ -21,8 +21,7 @@ import { Separator } from '@/components/ui/separator'
 import { SearchInput } from '@/components/shared/SearchInput'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Badge } from '@/components/ui/badge'
-import { usePosStore, useProductStore, useCategoryStore, useOrderStore, useAuthStore, useSessionStore, useTableStore, usePromotionStore } from '@/store'
-import type { OrderItem } from '@/types'
+import { usePosStore, useProductStore, useCategoryStore, useSessionStore, useTableStore, usePromotionStore } from '@/store'
 import { cn, formatCurrency } from '@/utils'
 import { CustomerSelector } from './CustomerSelector'
 import { CouponDialog } from './CouponDialog'
@@ -39,7 +38,6 @@ export function PosPage() {
     selectedCustomer,
     couponCode,
     promotionName,
-    promotionId,
     searchQuery,
     selectedCategoryId,
     selectedTableId,
@@ -54,15 +52,12 @@ export function PosPage() {
     getPromotionDiscount,
     getCouponDiscount,
     getTotal,
-    clearCart,
     recalculateDiscounts,
   } = usePosStore()
 
   const { products, fetchProducts } = useProductStore()
   const { categories, fetchCategories } = useCategoryStore()
   const { fetchPromotions } = usePromotionStore()
-  const { createOrder } = useOrderStore()
-  const { user } = useAuthStore()
   const { session } = useSessionStore()
   const floors = useTableStore((s) => s.floors)
 
@@ -72,6 +67,7 @@ export function PosPage() {
   const [customerOpen, setCustomerOpen] = useState(false)
   const [couponOpen, setCouponOpen] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
+  const [paymentSession, setPaymentSession] = useState(0)
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
   const cartItemCount = cart.reduce((s, i) => s + i.quantity, 0)
@@ -130,50 +126,7 @@ export function PosPage() {
     })
   }
 
-  const handleSendToKitchen = async () => {
-    if (cart.length === 0) {
-      toast.error('Cart is empty')
-      return
-    }
-    if (!user || !session) {
-      toast.error('No active session')
-      return
-    }
-
-    const orderItems: OrderItem[] = cart.map((item) => ({
-      id: crypto.randomUUID(),
-      productId: item.productId,
-      productName: item.productName,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      lineTotal: item.unitPrice * item.quantity,
-      kitchenStatus: 'to_cook',
-    }))
-
-    const order = await createOrder({
-      customerId: selectedCustomer?.id,
-      customerName: selectedCustomer?.name ?? 'Walk-in',
-      items: orderItems,
-      subtotal: getSubtotal(),
-      tax: getTax(),
-      discount: getDiscount(),
-      total: getTotal(),
-      status: 'draft',
-      couponCode: couponCode ?? undefined,
-      promotionId: promotionId ?? undefined,
-      promotionName: promotionName ?? undefined,
-      employeeId: user.id,
-      employeeName: user.name,
-      sessionId: session.id,
-    })
-
-    clearCart()
-    toast.success(`Order ${order.orderNumber} sent to kitchen`)
-  }
-
-  const selectedTable = floors.flatMap((f) => f.tables).find((t) => t.id === selectedTableId)
-
-  const handlePay = () => {
+  const openPaymentModal = () => {
     if (cart.length === 0) {
       toast.error('Cart is empty')
       return
@@ -182,7 +135,18 @@ export function PosPage() {
       toast.error('No active session')
       return
     }
+    setPaymentSession((s) => s + 1)
     setPaymentOpen(true)
+  }
+
+  const handlePlaceOrder = () => {
+    openPaymentModal()
+  }
+
+  const selectedTable = floors.flatMap((f) => f.tables).find((t) => t.id === selectedTableId)
+
+  const handlePay = () => {
+    openPaymentModal()
   }
 
   const panelClass = (panel: PosPanel) =>
@@ -467,11 +431,11 @@ export function PosPage() {
               <Button
                 variant="secondary"
                 className="w-full"
-                onClick={handleSendToKitchen}
+                onClick={handlePlaceOrder}
                 disabled={cart.length === 0}
               >
                 <ChefHat className="h-4 w-4" />
-                Send To Kitchen
+                Place Order
               </Button>
               <Button className="w-full" size="lg" onClick={handlePay} disabled={cart.length === 0}>
                 <CreditCard className="h-4 w-4" />
@@ -512,7 +476,7 @@ export function PosPage() {
       <FloorSelectDialog open={floorDialogOpen} onOpenChange={setFloorDialogOpen} />
       <CustomerSelector open={customerOpen} onOpenChange={setCustomerOpen} />
       <CouponDialog open={couponOpen} onOpenChange={setCouponOpen} />
-      <PaymentModal open={paymentOpen} onOpenChange={setPaymentOpen} />
+      <PaymentModal key={paymentSession} open={paymentOpen} onOpenChange={setPaymentOpen} />
     </div>
   )
 }

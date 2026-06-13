@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { ChefHat, Clock, CheckCircle2, Utensils } from 'lucide-react'
 import { useOrderStore } from '@/store'
+import { getSocket } from '@/services/socket'
 import type { KitchenStatus, Order } from '@/types'
 import { cn, formatDateTime } from '@/utils'
 import { KDS_BACKGROUND } from '@/utils/chartTheme'
@@ -26,17 +27,31 @@ function nextStatus(current: KitchenStatus): KitchenStatus {
 }
 
 export function KdsPage() {
-  const { orders, fetchKitchenOrders, updateKitchenItemStatus } = useOrderStore()
+  const { kitchenOrders, fetchKitchenOrders, updateKitchenItemStatus } = useOrderStore()
 
   useEffect(() => {
     fetchKitchenOrders()
-    const interval = setInterval(fetchKitchenOrders, 30000)
-    return () => clearInterval(interval)
+    const socket = getSocket()
+    const onNewOrder = () => {
+      console.log('[KDS] newOrder received — refreshing kitchen queue')
+      fetchKitchenOrders()
+    }
+    socket.on('newOrder', onNewOrder)
+    const interval = setInterval(fetchKitchenOrders, 5000)
+    return () => {
+      socket.off('newOrder', onNewOrder)
+      clearInterval(interval)
+    }
   }, [fetchKitchenOrders])
 
-  const kitchenOrders = useMemo(
-    () => orders.filter((o) => o.status === 'draft' && o.items.some((i) => i.kitchenStatus !== 'completed')),
-    [orders]
+  const activeKitchenOrders = useMemo(
+    () =>
+      kitchenOrders.filter(
+        (o) =>
+          (o.status === 'CONFIRMED' || o.status === 'draft') &&
+          o.items.some((i) => i.kitchenStatus !== 'completed')
+      ),
+    [kitchenOrders]
   )
 
   const ordersByStage = useMemo(() => {
@@ -45,11 +60,11 @@ export function KdsPage() {
       preparing: [],
       completed: [],
     }
-    for (const order of kitchenOrders) {
+    for (const order of activeKitchenOrders) {
       grouped[getOrderStage(order)].push(order)
     }
     return grouped
-  }, [kitchenOrders])
+  }, [activeKitchenOrders])
 
   const handleTicketClick = (order: Order) => {
     const stage = getOrderStage(order)
@@ -76,7 +91,7 @@ export function KdsPage() {
           <div>
             <h1 className="text-lg font-bold tracking-tight text-[#fff8f0] sm:text-2xl">Kitchen Display</h1>
             <p className="text-xs text-[#d7ccc8] sm:text-sm">
-              {kitchenOrders.length} active order{kitchenOrders.length !== 1 ? 's' : ''}
+              {activeKitchenOrders.length} active order{activeKitchenOrders.length !== 1 ? 's' : ''}
             </p>
           </div>
         </div>

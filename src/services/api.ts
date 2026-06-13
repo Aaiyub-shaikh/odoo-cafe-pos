@@ -124,6 +124,19 @@ export const employeesApi = {
   delete: (id: string) => api<{ success: boolean }>(`/employees/${id}`, { method: 'DELETE' }),
 }
 
+export const paymentApi = {
+  fakePayment: (orderId: string, data?: Record<string, unknown>) =>
+    api<Record<string, unknown>>('/payment/fake', {
+      method: 'POST',
+      body: JSON.stringify({ orderId, ...data }),
+    }),
+  paymentFail: (orderId: string) =>
+    api<Record<string, unknown>>('/payment/fail', {
+      method: 'POST',
+      body: JSON.stringify({ orderId }),
+    }),
+}
+
 export const paymentsApi = {
   getAll: () => api<Record<string, unknown>[]>('/payment-methods'),
   update: (id: string, data: Record<string, unknown>) =>
