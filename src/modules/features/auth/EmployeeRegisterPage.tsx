@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuthStore, useSessionStore } from '@/store'
+import { getDefaultRoute } from '@/utils/permissions'
 
 export default function EmployeeRegisterPage() {
   const navigate = useNavigate()
@@ -36,8 +37,14 @@ export default function EmployeeRegisterPage() {
       return
     }
 
-    openSession()
-    navigate('/pos')
+    const loggedInUser = useAuthStore.getState().user
+    if (loggedInUser?.role === 'cashier') {
+      openSession()
+    }
+    
+    if (loggedInUser) {
+      navigate(getDefaultRoute(loggedInUser.role))
+    }
   }
 
   return (
