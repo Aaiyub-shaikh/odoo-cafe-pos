@@ -7,6 +7,8 @@ const couponSchema = new Schema(
     fixedAmount: { type: Number },
     active: { type: Boolean, default: true },
     usageCount: { type: Number, default: 0 },
+    firstTimeUserOnly: { type: Boolean, default: false },
+    maxUsesPerUser: { type: Number, default: null },
   },
   { timestamps: true }
 )

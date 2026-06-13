@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button'
 import { useSessionStore } from '@/store'
 import { formatDateTime } from '@/utils'
 import { KDS_BACKGROUND } from '@/utils/chartTheme'
+import { isKdsStandalonePort } from '@/config/kds'
 
 export default function KdsLayout() {
   const { session } = useSessionStore()
+  const standalone = isKdsStandalonePort()
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: KDS_BACKGROUND }}>
@@ -30,15 +32,17 @@ export default function KdsLayout() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="text-[#d7ccc8] hover:text-[#fff8f0]" title="Fullscreen">
+          <Button variant="ghost" size="icon" className="text-[#d7ccc8] hover:text-[#fff8f0]" title="Fullscreen" onClick={() => document.documentElement.requestFullscreen?.()}>
             <Maximize2 className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" className="border-[#5d4037] bg-transparent text-[#fff8f0] hover:bg-[#5d4037]" asChild>
-            <Link to="/dashboard">
-              <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
-              Exit KDS
-            </Link>
-          </Button>
+          {!standalone && (
+            <Button variant="outline" size="sm" className="border-[#5d4037] bg-transparent text-[#fff8f0] hover:bg-[#5d4037]" asChild>
+              <Link to="/dashboard">
+                <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+                Exit KDS
+              </Link>
+            </Button>
+          )}
         </div>
       </motion.header>
 

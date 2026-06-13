@@ -38,6 +38,7 @@ import { DataTable, DateFilterTabs, PageHeader, StatCard } from '@/components/sh
 import { reportsApi } from '@/services/api'
 import { useEmployeeStore, useOrderStore, useProductStore, useReportStore } from '@/store'
 import { formatCurrency, formatDateTime } from '@/utils'
+import { exportReportExcel, exportReportPdf } from '@/utils/reportExport'
 import { CHART_TOOLTIP_STYLE, CHART_GRID_STROKE, CHART_AXIS_STROKE, CHART_COLORS } from '@/utils/chartTheme'
 
 const CHART_PALETTE = [CHART_COLORS.primary, CHART_COLORS.blue, CHART_COLORS.green, CHART_COLORS.purple, CHART_COLORS.gold]
@@ -120,8 +121,32 @@ export default function ReportsPage() {
     [filteredOrders]
   )
 
-  const exportPdf = () => toast.success('Report exported as PDF (mock)')
-  const exportExcel = () => toast.success('Report exported as Excel (mock)')
+  const buildExportPayload = () => ({
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    metrics,
+    orders: filteredOrders,
+    topProducts: topProducts.map((p) => ({ name: p.name, quantity: p.quantity, revenue: p.revenue })),
+    topCategories: topCategories.map((c) => ({ name: c.name, quantity: c.quantity, revenue: c.revenue })),
+  })
+
+  const exportPdf = () => {
+    try {
+      exportReportPdf(buildExportPayload())
+      toast.success('Report downloaded as PDF')
+    } catch {
+      toast.error('Failed to export PDF')
+    }
+  }
+
+  const exportExcel = () => {
+    try {
+      exportReportExcel(buildExportPayload())
+      toast.success('Report downloaded as Excel')
+    } catch {
+      toast.error('Failed to export Excel')
+    }
+  }
 
   return (
     <div className="space-y-6">

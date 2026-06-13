@@ -4,6 +4,7 @@ import { Customer } from '../models/Customer.js'
 import { PosSession } from '../models/PosSession.js'
 import { serialize, serializeMany } from '../utils/serialize.js'
 import { authMiddleware } from '../middleware/auth.js'
+import { recordCouponUsage } from './coupons.js'
 
 const router = Router()
 
@@ -37,7 +38,7 @@ router.get('/', authMiddleware, async (_req: Request, res: Response) => {
   }
 })
 
-router.get('/kitchen', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/kitchen', async (_req: Request, res: Response) => {
   try {
     const orders = await Order.find({ status: 'draft' }).sort({ createdAt: -1 })
     const kitchen = orders.filter((o) => o.items.some((i) => i.kitchenStatus !== 'completed'))
@@ -74,6 +75,14 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
       })
     }
 
+    if (order.status === 'paid' && order.couponCode) {
+      await recordCouponUsage(
+        order.couponCode,
+        order._id.toString(),
+        order.customerId?.toString()
+      )
+    }
+
     res.status(201).json(formatOrder(order.toObject()))
   } catch (err) {
     res.status(500).json({ error: String(err) })
@@ -90,7 +99,7 @@ router.patch('/:id', authMiddleware, async (req: Request, res: Response) => {
   }
 })
 
-router.patch('/:id/items/:itemId/kitchen', authMiddleware, async (req: Request, res: Response) => {
+router.patch('/:id/items/:itemId/kitchen', async (req: Request, res: Response) => {
   try {
     const { kitchenStatus } = req.body
     const order = await Order.findById(req.params.id)

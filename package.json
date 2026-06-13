@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"vite\"",
     "dev:frontend": "vite",
+    "dev:kds": "vite --port 5174",
     "dev:server": "npm run dev --prefix server",
     "dev:all": "npm run dev",
     "build": "tsc -b && vite build",
@@ -34,6 +35,8 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.18.1",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.514.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
@@ -43,6 +46,7 @@
     "recharts": "^2.15.3",
     "sonner": "^2.0.5",
     "tailwind-merge": "^3.3.1",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.63",
     "zustand": "^5.0.5"
   },

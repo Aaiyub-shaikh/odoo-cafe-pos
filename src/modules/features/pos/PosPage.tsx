@@ -21,7 +21,7 @@ import { Separator } from '@/components/ui/separator'
 import { SearchInput } from '@/components/shared/SearchInput'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Badge } from '@/components/ui/badge'
-import { usePosStore, useProductStore, useCategoryStore, useOrderStore, useAuthStore, useSessionStore, useTableStore } from '@/store'
+import { usePosStore, useProductStore, useCategoryStore, useOrderStore, useAuthStore, useSessionStore, useTableStore, usePromotionStore } from '@/store'
 import type { OrderItem } from '@/types'
 import { cn, formatCurrency } from '@/utils'
 import { CustomerSelector } from './CustomerSelector'
@@ -38,6 +38,8 @@ export function PosPage() {
     cart,
     selectedCustomer,
     couponCode,
+    promotionName,
+    promotionId,
     searchQuery,
     selectedCategoryId,
     selectedTableId,
@@ -49,12 +51,16 @@ export function PosPage() {
     getSubtotal,
     getTax,
     getDiscount,
+    getPromotionDiscount,
+    getCouponDiscount,
     getTotal,
     clearCart,
+    recalculateDiscounts,
   } = usePosStore()
 
   const { products, fetchProducts } = useProductStore()
   const { categories, fetchCategories } = useCategoryStore()
+  const { fetchPromotions } = usePromotionStore()
   const { createOrder } = useOrderStore()
   const { user } = useAuthStore()
   const { session } = useSessionStore()
@@ -73,7 +79,8 @@ export function PosPage() {
   useEffect(() => {
     fetchProducts()
     fetchCategories()
-  }, [fetchProducts, fetchCategories])
+    fetchPromotions().then(() => recalculateDiscounts())
+  }, [fetchProducts, fetchCategories, fetchPromotions, recalculateDiscounts])
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
@@ -118,6 +125,7 @@ export function PosPage() {
       productName: product.name,
       unitPrice: product.price,
       tax: product.tax,
+      categoryId: product.categoryId,
       image: product.image,
     })
   }
@@ -152,6 +160,8 @@ export function PosPage() {
       total: getTotal(),
       status: 'draft',
       couponCode: couponCode ?? undefined,
+      promotionId: promotionId ?? undefined,
+      promotionName: promotionName ?? undefined,
       employeeId: user.id,
       employeeName: user.name,
       sessionId: session.id,
@@ -398,9 +408,16 @@ export function PosPage() {
             </Button>
           </div>
 
-          {/* Coupon */}
+          {/* Coupon & promotions */}
           <div className="border-b border-border px-3 py-3 sm:px-4">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Coupon</h2>
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Discounts</h2>
+            {promotionName && getPromotionDiscount() > 0 && (
+              <div className="mb-2 rounded-md border border-success/30 bg-success/10 px-2 py-1.5 text-xs">
+                <span className="text-muted-foreground">Auto promotion: </span>
+                <span className="font-medium text-success">{promotionName}</span>
+                <span className="float-right font-medium">-{formatCurrency(getPromotionDiscount())}</span>
+              </div>
+            )}
             <Button variant="outline" className="w-full justify-start" onClick={() => setCouponOpen(true)}>
               <Tag className="h-4 w-4" />
               <span className="truncate">{couponCode ? couponCode : 'Apply coupon code'}</span>
@@ -420,7 +437,19 @@ export function PosPage() {
                   <span className="text-muted-foreground">Tax</span>
                   <span>{formatCurrency(getTax())}</span>
                 </div>
-                {getDiscount() > 0 && (
+                {getPromotionDiscount() > 0 && (
+                  <div className="flex justify-between text-sm text-success">
+                    <span>Promotion ({promotionName})</span>
+                    <span>-{formatCurrency(getPromotionDiscount())}</span>
+                  </div>
+                )}
+                {getCouponDiscount() > 0 && (
+                  <div className="flex justify-between text-sm text-success">
+                    <span>Coupon ({couponCode})</span>
+                    <span>-{formatCurrency(getCouponDiscount())}</span>
+                  </div>
+                )}
+                {getDiscount() > 0 && getPromotionDiscount() === 0 && getCouponDiscount() === 0 && (
                   <div className="flex justify-between text-sm text-success">
                     <span>Discount</span>
                     <span>-{formatCurrency(getDiscount())}</span>

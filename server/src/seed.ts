@@ -7,6 +7,7 @@ import { Customer } from './models/Customer.js'
 import { Floor } from './models/Floor.js'
 import { PaymentMethod } from './models/PaymentMethod.js'
 import { Coupon } from './models/Coupon.js'
+import { CouponUsage } from './models/CouponUsage.js'
 import { Promotion } from './models/Promotion.js'
 import { Booking } from './models/Booking.js'
 import { Order } from './models/Order.js'
@@ -22,6 +23,7 @@ async function seed() {
     Floor.deleteMany({}),
     PaymentMethod.deleteMany({}),
     Coupon.deleteMany({}),
+    CouponUsage.deleteMany({}),
     Promotion.deleteMany({}),
     Booking.deleteMany({}),
     Order.deleteMany({}),
@@ -84,12 +86,29 @@ async function seed() {
   await Coupon.insertMany([
     { code: 'SAVE10', percentage: 10, active: true, usageCount: 45 },
     { code: 'FLAT50', fixedAmount: 50, active: true, usageCount: 23 },
-    { code: 'WELCOME20', percentage: 20, active: false, usageCount: 12 },
+    {
+      code: 'WELCOME20',
+      percentage: 20,
+      active: true,
+      usageCount: 12,
+      firstTimeUserOnly: true,
+      maxUsesPerUser: 1,
+    },
+    { code: 'LOYAL1', percentage: 5, active: true, usageCount: 0, maxUsesPerUser: 3 },
   ])
 
   await Promotion.insertMany([
     { name: 'Buy 2 Get 1 Free - Starters', type: 'product', minQuantity: 2, discount: 100, discountType: 'percentage', active: true },
     { name: 'Orders above ₹1000', type: 'order', minOrderAmount: 1000, discount: 15, discountType: 'percentage', active: true },
+    {
+      name: '10% off Starters & Beverages',
+      type: 'category',
+      categoryIds: [catMap['Starters'].toString(), catMap['Beverages'].toString()],
+      minQuantity: 2,
+      discount: 10,
+      discountType: 'percentage',
+      active: true,
+    },
   ])
 
   await Booking.insertMany([

@@ -10,7 +10,7 @@ Restaurant Point of Sale System with React frontend and MongoDB backend.
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - MongoDB running locally (default: `mongodb://127.0.0.1:27017/rest_mana`)
 
 ## Getting Started

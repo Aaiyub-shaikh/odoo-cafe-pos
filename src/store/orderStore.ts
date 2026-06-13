@@ -6,6 +6,7 @@ interface OrderState {
   orders: Order[]
   isLoading: boolean
   fetchOrders: () => Promise<void>
+  fetchKitchenOrders: () => Promise<void>
   getOrder: (id: string) => Order | undefined
   createOrder: (order: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => Promise<Order>
   updateOrder: (id: string, data: Partial<Order>) => Promise<void>
@@ -22,6 +23,15 @@ export const useOrderStore = create<OrderState>((set, get) => ({
     set({ isLoading: true })
     try {
       const data = await ordersApi.getAll()
+      set({ orders: data as unknown as Order[], isLoading: false })
+    } catch {
+      set({ isLoading: false })
+    }
+  },
+  fetchKitchenOrders: async () => {
+    set({ isLoading: true })
+    try {
+      const data = await ordersApi.getKitchen()
       set({ orders: data as unknown as Order[], isLoading: false })
     } catch {
       set({ isLoading: false })
