@@ -7,7 +7,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuthStore, useSessionStore } from '@/store'
-import { ADMIN_DEMO_CREDENTIALS, CASHIER_DEMO_CREDENTIALS } from '@/mock/employees'
 import { getDefaultRoute } from '@/utils/permissions'
 
 export default function LoginPage() {
@@ -26,11 +25,11 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    const success = await login(email, password, rememberMe)
+    const result = await login(email, password, rememberMe)
     setLoading(false)
 
-    if (!success) {
-      setError('Invalid email or password. See demo credentials below.')
+    if (!result.success) {
+      setError(result.error)
       return
     }
 
@@ -50,7 +49,7 @@ export default function LoginPage() {
     <Card className="border-border bg-card shadow-lg">
       <CardHeader className="space-y-1">
         <CardTitle className="text-xl">Welcome back</CardTitle>
-        <CardDescription>Sign in as Admin or Employee</CardDescription>
+        <CardDescription>Sign in to your account</CardDescription>
       </CardHeader>
 
       <form onSubmit={handleSubmit}>
@@ -68,7 +67,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@restmana.com"
+                placeholder="you@restaurant.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-9"
@@ -110,11 +109,6 @@ export default function LoginPage() {
               Forgot password?
             </Link>
           </div>
-
-          <div className="space-y-2 rounded-md bg-secondary/50 px-3 py-2 text-xs text-muted-foreground">
-            <p><strong className="text-foreground">Admin:</strong> {ADMIN_DEMO_CREDENTIALS.email} / {ADMIN_DEMO_CREDENTIALS.password}</p>
-            <p><strong className="text-foreground">Employee:</strong> {CASHIER_DEMO_CREDENTIALS.email} / {CASHIER_DEMO_CREDENTIALS.password}</p>
-          </div>
         </CardContent>
 
         <CardFooter className="flex flex-col gap-4">
@@ -133,6 +127,10 @@ export default function LoginPage() {
             Don&apos;t have an account?{' '}
             <Link to="/signup" className="font-medium text-primary hover:underline">
               Register as Admin
+            </Link>
+            {' · '}
+            <Link to="/register/employee" className="font-medium text-primary hover:underline">
+              Register as Employee
             </Link>
           </p>
         </CardFooter>

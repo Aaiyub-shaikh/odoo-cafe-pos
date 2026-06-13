@@ -6,8 +6,8 @@ interface EmployeeState {
   employees: Employee[]
   isLoading: boolean
   fetchEmployees: () => Promise<void>
-  addEmployee: (employee: Omit<Employee, 'id' | 'createdAt' | 'status'>) => Promise<void>
-  updateEmployee: (id: string, data: Partial<Employee>) => Promise<void>
+  addEmployee: (employee: { name: string; email: string; password: string; role?: 'admin' | 'cashier' }) => Promise<void>
+  updateEmployee: (id: string, data: Partial<Employee> & { password?: string }) => Promise<void>
   archiveEmployee: (id: string) => Promise<void>
   deleteEmployee: (id: string) => Promise<void>
 }

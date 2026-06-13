@@ -49,6 +49,7 @@ export interface Table {
   number: number
   seats: number
   floorId: string
+  active: boolean
   status: TableStatus
   x: number
   y: number
@@ -85,7 +86,9 @@ export interface Order {
   discount: number
   total: number
   status: OrderStatus
-  paymentMethod?: 'cash' | 'card' | 'upi'
+  paymentMethod?: 'cash' | 'card' | 'upi' | 'razorpay'
+  razorpayPaymentId?: string
+  razorpayOrderId?: string
   couponCode?: string
   employeeId: string
   employeeName: string
@@ -96,10 +99,21 @@ export interface Order {
 
 export interface PaymentMethod {
   id: string
-  type: 'cash' | 'card' | 'upi'
+  type: 'cash' | 'card' | 'upi' | 'razorpay'
   name: string
   enabled: boolean
   upiId?: string
+}
+
+export interface RazorpaySettings {
+  razorpayEnabled: boolean
+  razorpayKeyId: string
+  hasSecret: boolean
+}
+
+export interface RazorpayConfig {
+  enabled: boolean
+  keyId: string
 }
 
 export interface Coupon {

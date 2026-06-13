@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/store'
+import { getDefaultRoute } from '@/utils/permissions'
 
 function useAuthReady() {
   const [hydrated, setHydrated] = useState(() => useAuthStore.persist.hasHydrated())
@@ -23,7 +24,8 @@ function useAuthReady() {
   return !hydrated || isInitializing
 }
 
-export default function ProtectedRoute() {
+export default function GuestRoute() {
+  const user = useAuthStore((s) => s.user)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const loading = useAuthReady()
 
@@ -35,8 +37,8 @@ export default function ProtectedRoute() {
     )
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+  if (isAuthenticated && user) {
+    return <Navigate to={getDefaultRoute(user.role)} replace />
   }
 
   return <Outlet />

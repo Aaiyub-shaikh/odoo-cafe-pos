@@ -22,6 +22,13 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
   }
 }
 
+export function adminMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.userRole !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' })
+  }
+  next()
+}
+
 export function optionalAuth(req: AuthRequest, res: Response, next: NextFunction) {
   const header = req.headers.authorization
   if (header?.startsWith('Bearer ')) {
