@@ -1,4 +1,4 @@
-# RestMana POS
+# Café Luxe
 
 Restaurant Point of Sale System with React frontend and MongoDB backend.
 
