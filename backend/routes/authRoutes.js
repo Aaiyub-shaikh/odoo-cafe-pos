@@ -2,6 +2,7 @@ const express = require('express');
 
 const {
   signup,
+  signupEmployee,
   login,
   updateProfile,
   getMe,
@@ -14,6 +15,8 @@ const {
 const router = express.Router();
 
 router.post('/signup', signup);
+
+router.post('/signup/employee', signupEmployee);
 
 router.post('/login', login);
 

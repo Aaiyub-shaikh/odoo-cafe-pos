@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
+const employeesRoutes = require('./routes/employeesRoutes');
 
 dotenv.config();
 
@@ -26,6 +27,8 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+
+app.use('/api/employees', employeesRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Request error:', err.message);

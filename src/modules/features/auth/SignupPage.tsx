@@ -32,7 +32,10 @@ export default function SignupPage() {
     setLoading(false)
 
     if (result.success) {
-      navigate(getDefaultRoute('admin'))
+      const loggedInUser = useAuthStore.getState().user
+      if (loggedInUser) {
+        navigate(getDefaultRoute(loggedInUser.role))
+      }
       return
     }
 
