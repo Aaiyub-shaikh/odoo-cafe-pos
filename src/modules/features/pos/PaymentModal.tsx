@@ -94,7 +94,7 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
     return true
   }
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!canConfirm() || !session || !user) return
 
     const orderItems: OrderItem[] = cart.map((item) => ({
@@ -107,7 +107,7 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
       kitchenStatus: 'to_cook' as const,
     }))
 
-    const order = createOrder({
+    const order = await createOrder({
       customerId: selectedCustomer?.id,
       customerName: selectedCustomer?.name ?? 'Walk-in',
       tableId: selectedTableId ?? undefined,

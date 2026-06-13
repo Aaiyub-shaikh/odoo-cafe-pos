@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Calendar, Clock, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { DataTable, PageHeader } from '@/components/shared'
-import { mockBookings } from '@/mock'
+import { bookingsApi } from '@/services/api'
 import type { Booking } from '@/types'
 import { formatDate } from '@/utils'
 
@@ -14,13 +14,21 @@ const statusVariant = {
 } as const
 
 export default function BookingsPage() {
-  const [bookings] = useState<Booking[]>(mockBookings)
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    bookingsApi.getAll()
+      .then((data) => setBookings(data as unknown as Booking[]))
+      .finally(() => setIsLoading(false))
+  }, [])
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <PageHeader title="Bookings" description="View and manage table reservations" />
 
       <DataTable
+        isLoading={isLoading}
         data={bookings}
         columns={[
           {
@@ -41,31 +49,26 @@ export default function BookingsPage() {
           {
             key: 'date',
             header: 'Date',
-            cell: (b) => (
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                {formatDate(b.date)}
-              </div>
-            ),
+            cell: (b) => formatDate(b.date),
           },
           {
             key: 'time',
             header: 'Time',
             cell: (b) => (
-              <div className="flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
                 {b.time}
-              </div>
+              </span>
             ),
           },
           {
             key: 'guests',
             header: 'Guests',
             cell: (b) => (
-              <div className="flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="flex items-center gap-1">
+                <Users className="h-3 w-3" />
                 {b.guests}
-              </div>
+              </span>
             ),
           },
           {
@@ -81,17 +84,17 @@ export default function BookingsPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        {(['confirmed', 'completed', 'cancelled'] as const).map((status) => {
-          const count = bookings.filter((b) => b.status === status).length
-          return (
-            <Card key={status} className="border-border bg-card shadow-sm">
-              <CardContent className="flex items-center justify-between p-4">
-                <span className="text-sm capitalize text-muted-foreground">{status}</span>
-                <Badge variant={statusVariant[status]}>{count}</Badge>
-              </CardContent>
-            </Card>
-          )
-        })}
+        {(['confirmed', 'cancelled', 'completed'] as const).map((status) => (
+          <Card key={status} className="border-border bg-card shadow-sm">
+            <CardContent className="flex items-center gap-3 p-4">
+              <Calendar className="h-8 w-8 text-primary" />
+              <div>
+                <p className="text-2xl font-bold">{bookings.filter((b) => b.status === status).length}</p>
+                <p className="text-xs capitalize text-muted-foreground">{status}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   )

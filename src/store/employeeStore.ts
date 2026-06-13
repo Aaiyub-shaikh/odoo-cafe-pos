@@ -1,45 +1,47 @@
 import { create } from 'zustand'
 import type { Employee } from '@/types'
-import { mockEmployees } from '@/mock/employees'
+import { employeesApi } from '@/services/api'
 
 interface EmployeeState {
   employees: Employee[]
   isLoading: boolean
   fetchEmployees: () => Promise<void>
-  addEmployee: (employee: Omit<Employee, 'id' | 'createdAt' | 'status'>) => void
-  updateEmployee: (id: string, data: Partial<Employee>) => void
-  archiveEmployee: (id: string) => void
-  deleteEmployee: (id: string) => void
+  addEmployee: (employee: Omit<Employee, 'id' | 'createdAt' | 'status'>) => Promise<void>
+  updateEmployee: (id: string, data: Partial<Employee>) => Promise<void>
+  archiveEmployee: (id: string) => Promise<void>
+  deleteEmployee: (id: string) => Promise<void>
 }
 
 export const useEmployeeStore = create<EmployeeState>((set) => ({
-  employees: [...mockEmployees],
+  employees: [],
   isLoading: false,
   fetchEmployees: async () => {
     set({ isLoading: true })
-    await new Promise((r) => setTimeout(r, 400))
-    set({ employees: [...mockEmployees], isLoading: false })
-  },
-  addEmployee: (employee) => {
-    const newEmployee: Employee = {
-      ...employee,
-      id: crypto.randomUUID(),
-      status: 'active',
-      createdAt: new Date().toISOString(),
+    try {
+      const data = await employeesApi.getAll()
+      set({ employees: data as unknown as Employee[], isLoading: false })
+    } catch {
+      set({ isLoading: false })
     }
-    set((s) => ({ employees: [...s.employees, newEmployee] }))
   },
-  updateEmployee: (id, data) => {
+  addEmployee: async (employee) => {
+    const created = (await employeesApi.create(employee)) as unknown as Employee
+    set((s) => ({ employees: [...s.employees, created] }))
+  },
+  updateEmployee: async (id, data) => {
+    const updated = (await employeesApi.update(id, data)) as unknown as Employee
     set((s) => ({
-      employees: s.employees.map((e) => (e.id === id ? { ...e, ...data } : e)),
+      employees: s.employees.map((e) => (e.id === id ? updated : e)),
     }))
   },
-  archiveEmployee: (id) => {
+  archiveEmployee: async (id) => {
+    const updated = (await employeesApi.archive(id)) as unknown as Employee
     set((s) => ({
-      employees: s.employees.map((e) => (e.id === id ? { ...e, status: 'archived' } : e)),
+      employees: s.employees.map((e) => (e.id === id ? updated : e)),
     }))
   },
-  deleteEmployee: (id) => {
+  deleteEmployee: async (id) => {
+    await employeesApi.delete(id)
     set((s) => ({ employees: s.employees.filter((e) => e.id !== id) }))
   },
 }))

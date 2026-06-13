@@ -1,35 +1,42 @@
 import { create } from 'zustand'
 import type { Product } from '@/types'
-import { mockProducts } from '@/mock/products'
+import { productsApi } from '@/services/api'
 
 interface ProductState {
   products: Product[]
   isLoading: boolean
   fetchProducts: () => Promise<void>
-  addProduct: (product: Omit<Product, 'id'>) => void
-  updateProduct: (id: string, data: Partial<Product>) => void
-  deleteProduct: (id: string) => void
+  addProduct: (product: Omit<Product, 'id'>) => Promise<Product>
+  updateProduct: (id: string, data: Partial<Product>) => Promise<void>
+  deleteProduct: (id: string) => Promise<void>
   getProduct: (id: string) => Product | undefined
 }
 
 export const useProductStore = create<ProductState>((set, get) => ({
-  products: [...mockProducts],
+  products: [],
   isLoading: false,
   fetchProducts: async () => {
     set({ isLoading: true })
-    await new Promise((r) => setTimeout(r, 500))
-    set({ products: [...mockProducts], isLoading: false })
+    try {
+      const data = await productsApi.getAll()
+      set({ products: data as unknown as Product[], isLoading: false })
+    } catch {
+      set({ isLoading: false })
+    }
   },
-  addProduct: (product) => {
-    const newProduct: Product = { ...product, id: crypto.randomUUID() }
-    set((s) => ({ products: [...s.products, newProduct] }))
+  addProduct: async (product) => {
+    const created = (await productsApi.create(product)) as unknown as Product
+    set((s) => ({ products: [...s.products, created] }))
+    return created
   },
-  updateProduct: (id, data) => {
+  updateProduct: async (id, data) => {
+    const updated = (await productsApi.update(id, data)) as unknown as Product
     set((s) => ({
-      products: s.products.map((p) => (p.id === id ? { ...p, ...data } : p)),
+      products: s.products.map((p) => (p.id === id ? updated : p)),
     }))
   },
-  deleteProduct: (id) => {
+  deleteProduct: async (id) => {
+    await productsApi.delete(id)
     set((s) => ({ products: s.products.filter((p) => p.id !== id) }))
   },
   getProduct: (id) => get().products.find((p) => p.id === id),

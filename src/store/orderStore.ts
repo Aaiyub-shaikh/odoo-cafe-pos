@@ -1,72 +1,55 @@
 import { create } from 'zustand'
 import type { Order, OrderItem, OrderStatus } from '@/types'
-import { mockOrders } from '@/mock/orders'
-import { useSessionStore } from './sessionStore'
+import { ordersApi } from '@/services/api'
 
 interface OrderState {
   orders: Order[]
   isLoading: boolean
   fetchOrders: () => Promise<void>
   getOrder: (id: string) => Order | undefined
-  createOrder: (order: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => Order
-  updateOrder: (id: string, data: Partial<Order>) => void
-  deleteOrder: (id: string) => void
-  updateOrderStatus: (id: string, status: OrderStatus) => void
-  updateKitchenItemStatus: (orderId: string, itemId: string, status: OrderItem['kitchenStatus']) => void
+  createOrder: (order: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => Promise<Order>
+  updateOrder: (id: string, data: Partial<Order>) => Promise<void>
+  deleteOrder: (id: string) => Promise<void>
+  updateOrderStatus: (id: string, status: OrderStatus) => Promise<void>
+  updateKitchenItemStatus: (orderId: string, itemId: string, status: OrderItem['kitchenStatus']) => Promise<void>
   getKitchenOrders: () => Order[]
 }
 
-let orderCounter = 7
-
 export const useOrderStore = create<OrderState>((set, get) => ({
-  orders: [...mockOrders],
+  orders: [],
   isLoading: false,
   fetchOrders: async () => {
     set({ isLoading: true })
-    await new Promise((r) => setTimeout(r, 500))
-    set({ orders: [...mockOrders], isLoading: false })
+    try {
+      const data = await ordersApi.getAll()
+      set({ orders: data as unknown as Order[], isLoading: false })
+    } catch {
+      set({ isLoading: false })
+    }
   },
   getOrder: (id) => get().orders.find((o) => o.id === id),
-  createOrder: (order) => {
-    orderCounter++
-    const newOrder: Order = {
-      ...order,
-      id: crypto.randomUUID(),
-      orderNumber: `ORD-2025-${String(orderCounter).padStart(3, '0')}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    set((s) => ({ orders: [newOrder, ...s.orders] }))
-    if (order.status === 'paid') {
-      useSessionStore.getState().updateSessionStats(order.total)
-    }
-    return newOrder
+  createOrder: async (order) => {
+    const created = (await ordersApi.create(order)) as unknown as Order
+    set((s) => ({ orders: [created, ...s.orders] }))
+    return created
   },
-  updateOrder: (id, data) => {
+  updateOrder: async (id, data) => {
+    const updated = (await ordersApi.update(id, data)) as unknown as Order
     set((s) => ({
-      orders: s.orders.map((o) =>
-        o.id === id ? { ...o, ...data, updatedAt: new Date().toISOString() } : o
-      ),
+      orders: s.orders.map((o) => (o.id === id ? updated : o)),
     }))
   },
-  deleteOrder: (id) => {
+  deleteOrder: async (id) => {
+    await ordersApi.delete(id)
     set((s) => ({ orders: s.orders.filter((o) => o.id !== id) }))
   },
-  updateOrderStatus: (id, status) => {
-    get().updateOrder(id, { status })
+  updateOrderStatus: async (id, status) => {
+    await get().updateOrder(id, { status })
   },
-  updateKitchenItemStatus: (orderId, itemId, kitchenStatus) => {
+  updateKitchenItemStatus: async (orderId, itemId, kitchenStatus) => {
+    const updated = (await ordersApi.updateKitchenItem(orderId, itemId, kitchenStatus)) as unknown as Order
     set((s) => ({
-      orders: s.orders.map((o) => {
-        if (o.id !== orderId) return o
-        return {
-          ...o,
-          items: o.items.map((item) =>
-            item.id === itemId ? { ...item, kitchenStatus } : item
-          ),
-          updatedAt: new Date().toISOString(),
-        }
-      }),
+      orders: s.orders.map((o) => (o.id === orderId ? updated : o)),
     }))
   },
   getKitchenOrders: () => {

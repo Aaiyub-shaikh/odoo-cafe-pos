@@ -1,36 +1,42 @@
 import { create } from 'zustand'
 import type { Category } from '@/types'
-import { mockCategories } from '@/mock/products'
+import { categoriesApi } from '@/services/api'
 
 interface CategoryState {
   categories: Category[]
   isLoading: boolean
   fetchCategories: () => Promise<void>
-  addCategory: (category: Omit<Category, 'id'>) => Category
-  updateCategory: (id: string, data: Partial<Category>) => void
-  deleteCategory: (id: string) => void
+  addCategory: (category: Omit<Category, 'id'>) => Promise<Category>
+  updateCategory: (id: string, data: Partial<Category>) => Promise<void>
+  deleteCategory: (id: string) => Promise<void>
   getCategory: (id: string) => Category | undefined
 }
 
 export const useCategoryStore = create<CategoryState>((set, get) => ({
-  categories: [...mockCategories],
+  categories: [],
   isLoading: false,
   fetchCategories: async () => {
     set({ isLoading: true })
-    await new Promise((r) => setTimeout(r, 400))
-    set({ categories: [...mockCategories], isLoading: false })
+    try {
+      const data = await categoriesApi.getAll()
+      set({ categories: data as unknown as Category[], isLoading: false })
+    } catch {
+      set({ isLoading: false })
+    }
   },
-  addCategory: (category) => {
-    const newCategory: Category = { ...category, id: crypto.randomUUID() }
-    set((s) => ({ categories: [...s.categories, newCategory] }))
-    return newCategory
+  addCategory: async (category) => {
+    const created = (await categoriesApi.create(category)) as unknown as Category
+    set((s) => ({ categories: [...s.categories, created] }))
+    return created
   },
-  updateCategory: (id, data) => {
+  updateCategory: async (id, data) => {
+    const updated = (await categoriesApi.update(id, data)) as unknown as Category
     set((s) => ({
-      categories: s.categories.map((c) => (c.id === id ? { ...c, ...data } : c)),
+      categories: s.categories.map((c) => (c.id === id ? updated : c)),
     }))
   },
-  deleteCategory: (id) => {
+  deleteCategory: async (id) => {
+    await categoriesApi.delete(id)
     set((s) => ({ categories: s.categories.filter((c) => c.id !== id) }))
   },
   getCategory: (id) => get().categories.find((c) => c.id === id),

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { FolderOpen, Pencil, Plus, Trash2 } from 'lucide-react'
 import { PageHeader, DataTable, ConfirmDialog } from '@/components/shared'
@@ -31,7 +31,11 @@ const PRESET_COLORS = [
 ]
 
 export default function CategoriesPage() {
-  const { categories, addCategory, updateCategory, deleteCategory } = useCategoryStore()
+  const { categories, fetchCategories, addCategory, updateCategory, deleteCategory } = useCategoryStore()
+
+  useEffect(() => {
+    fetchCategories()
+  }, [fetchCategories])
 
   const [formOpen, setFormOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
@@ -53,14 +57,14 @@ export default function CategoriesPage() {
     setFormOpen(true)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmed = name.trim()
     if (!trimmed) return
 
     if (editingCategory) {
-      updateCategory(editingCategory.id, { name: trimmed, color })
+      await updateCategory(editingCategory.id, { name: trimmed, color })
     } else {
-      addCategory({ name: trimmed, color })
+      await addCategory({ name: trimmed, color })
     }
 
     setFormOpen(false)

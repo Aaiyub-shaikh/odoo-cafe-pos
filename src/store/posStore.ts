@@ -16,7 +16,7 @@ interface PosState {
   clearCart: () => void
   setCustomer: (customer: Customer | null) => void
   setTable: (tableId: string | null) => void
-  applyCoupon: (code: string) => boolean
+  applyCoupon: (code: string) => Promise<boolean>
   removeCoupon: () => void
   setSearchQuery: (query: string) => void
   setSelectedCategory: (categoryId: string | null) => void
@@ -64,8 +64,8 @@ export const usePosStore = create<PosState>((set, get) => ({
   clearCart: () => set({ cart: [], selectedCustomer: null, selectedTableId: null, couponCode: null, couponDiscount: 0 }),
   setCustomer: (customer) => set({ selectedCustomer: customer }),
   setTable: (tableId) => set({ selectedTableId: tableId }),
-  applyCoupon: (code) => {
-    const coupon = usePromotionStore.getState().validateCoupon(code)
+  applyCoupon: async (code) => {
+    const coupon = await usePromotionStore.getState().validateCoupon(code)
     if (!coupon) return false
     const subtotal = get().getSubtotal()
     let discount = 0

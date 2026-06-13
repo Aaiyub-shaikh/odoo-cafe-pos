@@ -24,13 +24,13 @@ export function CouponDialog({ open, onOpenChange }: CouponDialogProps) {
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
 
-  const handleApply = () => {
+  const handleApply = async () => {
     const trimmed = code.trim().toUpperCase()
     if (!trimmed) {
       setError('Enter a coupon code')
       return
     }
-    const success = applyCoupon(trimmed)
+    const success = await applyCoupon(trimmed)
     if (success) {
       setError('')
       setCode('')

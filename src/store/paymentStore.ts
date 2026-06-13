@@ -1,28 +1,36 @@
 import { create } from 'zustand'
 import type { PaymentMethod } from '@/types'
-import { mockPaymentMethods } from '@/mock/misc'
+import { paymentsApi } from '@/services/api'
 
 interface PaymentState {
   methods: PaymentMethod[]
   fetchMethods: () => Promise<void>
-  toggleMethod: (id: string) => void
-  updateMethod: (id: string, data: Partial<PaymentMethod>) => void
+  toggleMethod: (id: string) => Promise<void>
+  updateMethod: (id: string, data: Partial<PaymentMethod>) => Promise<void>
 }
 
-export const usePaymentStore = create<PaymentState>((set) => ({
-  methods: [...mockPaymentMethods],
+export const usePaymentStore = create<PaymentState>((set, get) => ({
+  methods: [],
   fetchMethods: async () => {
-    await new Promise((r) => setTimeout(r, 300))
-    set({ methods: [...mockPaymentMethods] })
+    try {
+      const data = await paymentsApi.getAll()
+      set({ methods: data as unknown as PaymentMethod[] })
+    } catch {
+      /* ignore */
+    }
   },
-  toggleMethod: (id) => {
+  toggleMethod: async (id) => {
+    const method = get().methods.find((m) => m.id === id)
+    if (!method) return
+    const updated = (await paymentsApi.update(id, { enabled: !method.enabled })) as unknown as PaymentMethod
     set((s) => ({
-      methods: s.methods.map((m) => (m.id === id ? { ...m, enabled: !m.enabled } : m)),
+      methods: s.methods.map((m) => (m.id === id ? updated : m)),
     }))
   },
-  updateMethod: (id, data) => {
+  updateMethod: async (id, data) => {
+    const updated = (await paymentsApi.update(id, data)) as unknown as PaymentMethod
     set((s) => ({
-      methods: s.methods.map((m) => (m.id === id ? { ...m, ...data } : m)),
+      methods: s.methods.map((m) => (m.id === id ? updated : m)),
     }))
   },
 }))

@@ -1,67 +1,74 @@
 import { create } from 'zustand'
 import type { Coupon, Promotion } from '@/types'
-import { mockCoupons, mockPromotions } from '@/mock/misc'
+import { couponsApi, promotionsApi } from '@/services/api'
 
 interface PromotionState {
   coupons: Coupon[]
   promotions: Promotion[]
   fetchCoupons: () => Promise<void>
   fetchPromotions: () => Promise<void>
-  addCoupon: (coupon: Omit<Coupon, 'id' | 'usageCount' | 'createdAt'>) => void
-  updateCoupon: (id: string, data: Partial<Coupon>) => void
-  deleteCoupon: (id: string) => void
-  addPromotion: (promo: Omit<Promotion, 'id' | 'createdAt'>) => void
-  updatePromotion: (id: string, data: Partial<Promotion>) => void
-  deletePromotion: (id: string) => void
-  validateCoupon: (code: string) => Coupon | null
+  addCoupon: (coupon: Omit<Coupon, 'id' | 'usageCount' | 'createdAt'>) => Promise<void>
+  updateCoupon: (id: string, data: Partial<Coupon>) => Promise<void>
+  deleteCoupon: (id: string) => Promise<void>
+  addPromotion: (promo: Omit<Promotion, 'id' | 'createdAt'>) => Promise<void>
+  updatePromotion: (id: string, data: Partial<Promotion>) => Promise<void>
+  deletePromotion: (id: string) => Promise<void>
+  validateCoupon: (code: string) => Promise<Coupon | null>
 }
 
-export const usePromotionStore = create<PromotionState>((set, get) => ({
-  coupons: [...mockCoupons],
-  promotions: [...mockPromotions],
+export const usePromotionStore = create<PromotionState>((set) => ({
+  coupons: [],
+  promotions: [],
   fetchCoupons: async () => {
-    await new Promise((r) => setTimeout(r, 300))
-    set({ coupons: [...mockCoupons] })
+    try {
+      const data = await couponsApi.getAll()
+      set({ coupons: data as unknown as Coupon[] })
+    } catch {
+      /* ignore */
+    }
   },
   fetchPromotions: async () => {
-    await new Promise((r) => setTimeout(r, 300))
-    set({ promotions: [...mockPromotions] })
-  },
-  addCoupon: (coupon) => {
-    const newCoupon: Coupon = {
-      ...coupon,
-      id: crypto.randomUUID(),
-      usageCount: 0,
-      createdAt: new Date().toISOString(),
+    try {
+      const data = await promotionsApi.getAll()
+      set({ promotions: data as unknown as Promotion[] })
+    } catch {
+      /* ignore */
     }
-    set((s) => ({ coupons: [...s.coupons, newCoupon] }))
   },
-  updateCoupon: (id, data) => {
+  addCoupon: async (coupon) => {
+    const created = (await couponsApi.create(coupon)) as unknown as Coupon
+    set((s) => ({ coupons: [...s.coupons, created] }))
+  },
+  updateCoupon: async (id, data) => {
+    const updated = (await couponsApi.update(id, data)) as unknown as Coupon
     set((s) => ({
-      coupons: s.coupons.map((c) => (c.id === id ? { ...c, ...data } : c)),
+      coupons: s.coupons.map((c) => (c.id === id ? updated : c)),
     }))
   },
-  deleteCoupon: (id) => {
+  deleteCoupon: async (id) => {
+    await couponsApi.delete(id)
     set((s) => ({ coupons: s.coupons.filter((c) => c.id !== id) }))
   },
-  addPromotion: (promo) => {
-    const newPromo: Promotion = {
-      ...promo,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-    }
-    set((s) => ({ promotions: [...s.promotions, newPromo] }))
+  addPromotion: async (promo) => {
+    const created = (await promotionsApi.create(promo)) as unknown as Promotion
+    set((s) => ({ promotions: [...s.promotions, created] }))
   },
-  updatePromotion: (id, data) => {
+  updatePromotion: async (id, data) => {
+    const updated = (await promotionsApi.update(id, data)) as unknown as Promotion
     set((s) => ({
-      promotions: s.promotions.map((p) => (p.id === id ? { ...p, ...data } : p)),
+      promotions: s.promotions.map((p) => (p.id === id ? updated : p)),
     }))
   },
-  deletePromotion: (id) => {
+  deletePromotion: async (id) => {
+    await promotionsApi.delete(id)
     set((s) => ({ promotions: s.promotions.filter((p) => p.id !== id) }))
   },
-  validateCoupon: (code) => {
-    const coupon = get().coupons.find((c) => c.code.toUpperCase() === code.toUpperCase() && c.active)
-    return coupon ?? null
+  validateCoupon: async (code) => {
+    try {
+      const coupon = await couponsApi.validate(code)
+      return (coupon as unknown as Coupon) ?? null
+    } catch {
+      return null
+    }
   },
 }))

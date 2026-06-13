@@ -122,7 +122,7 @@ export function PosPage() {
     })
   }
 
-  const handleSendToKitchen = () => {
+  const handleSendToKitchen = async () => {
     if (cart.length === 0) {
       toast.error('Cart is empty')
       return
@@ -142,7 +142,7 @@ export function PosPage() {
       kitchenStatus: 'to_cook',
     }))
 
-    const order = createOrder({
+    const order = await createOrder({
       customerId: selectedCustomer?.id,
       customerName: selectedCustomer?.name ?? 'Walk-in',
       items: orderItems,

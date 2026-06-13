@@ -1,53 +1,68 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User } from '@/types'
-import { DEMO_CREDENTIALS, mockUsers, CASHIER_DEMO_CREDENTIALS } from '@/mock/employees'
+import { authApi, setAuthToken } from '@/services/api'
 
 interface AuthState {
   user: User | null
+  token: string | null
   isAuthenticated: boolean
   rememberMe: boolean
   login: (email: string, password: string, remember?: boolean) => Promise<boolean>
   signup: (name: string, email: string, password: string) => Promise<boolean>
   logout: () => void
-  updateProfile: (data: Partial<User>) => void
+  updateProfile: (data: Partial<User>) => Promise<void>
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
+      token: null,
       isAuthenticated: false,
       rememberMe: false,
       login: async (email, password, remember = false) => {
-        await new Promise((r) => setTimeout(r, 800))
-        if (email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password) {
-          const user = mockUsers[0]
-          set({ user, isAuthenticated: true, rememberMe: remember })
+        try {
+          const { token, user } = await authApi.login(email, password)
+          const mappedUser = user as unknown as User
+          setAuthToken(token)
+          set({ user: mappedUser, token, isAuthenticated: true, rememberMe: remember })
           return true
+        } catch {
+          return false
         }
-        if (email === CASHIER_DEMO_CREDENTIALS.email && password === CASHIER_DEMO_CREDENTIALS.password) {
-          const user = mockUsers[1]
-          set({ user, isAuthenticated: true, rememberMe: remember })
-          return true
-        }
-        const user = mockUsers.find((u) => u.email === email)
-        if (user && password.length >= 6) {
-          set({ user, isAuthenticated: true, rememberMe: remember })
-          return true
-        }
-        return false
       },
-      signup: async (name, email, _password) => {
-        await new Promise((r) => setTimeout(r, 800))
-        const user: User = { id: crypto.randomUUID(), name, email, role: 'admin' }
-        set({ user, isAuthenticated: true, rememberMe: false })
-        return true
+      signup: async (name, email, password) => {
+        try {
+          const { token, user } = await authApi.signup(name, email, password)
+          const mappedUser = user as unknown as User
+          setAuthToken(token)
+          set({ user: mappedUser, token, isAuthenticated: true, rememberMe: false })
+          return true
+        } catch {
+          return false
+        }
       },
-      logout: () => set({ user: null, isAuthenticated: false, rememberMe: false }),
-      updateProfile: (data) =>
-        set((s) => (s.user ? { user: { ...s.user, ...data } } : s)),
+      logout: () => {
+        setAuthToken(null)
+        set({ user: null, token: null, isAuthenticated: false, rememberMe: false })
+      },
+      updateProfile: async (data) => {
+        const updated = await authApi.updateProfile(data)
+        set((s) => (s.user ? { user: { ...s.user, ...(updated as unknown as User) } } : s))
+      },
     }),
-    { name: 'auth-storage', partialize: (s) => ({ user: s.user, isAuthenticated: s.isAuthenticated, rememberMe: s.rememberMe }) }
+    {
+      name: 'auth-storage',
+      partialize: (s) => ({
+        user: s.user,
+        token: s.token,
+        isAuthenticated: s.isAuthenticated,
+        rememberMe: s.rememberMe,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.token) setAuthToken(state.token)
+      },
+    }
   )
 )

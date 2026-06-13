@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared'
@@ -63,7 +63,11 @@ function TableCard({ table, onStatusChange }: { table: Table; onStatusChange: (s
 }
 
 export default function TablesPage() {
-  const { floors, activeFloorId, setActiveFloor, updateTableStatus } = useTableStore()
+  const { floors, activeFloorId, setActiveFloor, fetchFloors, updateTableStatus } = useTableStore()
+
+  useEffect(() => {
+    fetchFloors()
+  }, [fetchFloors])
 
   const activeFloor = useMemo(
     () => floors.find((f) => f.id === activeFloorId) ?? floors[0],

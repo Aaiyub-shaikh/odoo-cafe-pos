@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   BarChart3,
   Download,
@@ -35,23 +35,55 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { DataTable, DateFilterTabs, PageHeader, StatCard } from '@/components/shared'
-import { mockSalesData, mockTopCategories, mockTopProducts } from '@/mock'
+import { reportsApi } from '@/services/api'
 import { useEmployeeStore, useOrderStore, useProductStore, useReportStore } from '@/store'
 import { formatCurrency, formatDateTime } from '@/utils'
 import { CHART_TOOLTIP_STYLE, CHART_GRID_STROKE, CHART_AXIS_STROKE, CHART_COLORS } from '@/utils/chartTheme'
 
 const CHART_PALETTE = [CHART_COLORS.primary, CHART_COLORS.blue, CHART_COLORS.green, CHART_COLORS.purple, CHART_COLORS.gold]
 
+interface SalesDataPoint {
+  date: string
+  sales: number
+  revenue: number
+  orders: number
+}
+
+interface TopProductRow {
+  id: string
+  name: string
+  quantity: number
+  revenue: number
+}
+
+interface TopCategoryRow {
+  id: string
+  name: string
+  color?: string
+  quantity: number
+  revenue: number
+}
+
 export default function ReportsPage() {
   const { dateFilter, filters, setDateFilter, setFilters } = useReportStore()
   const { employees, fetchEmployees } = useEmployeeStore()
   const { products, fetchProducts } = useProductStore()
   const { orders, fetchOrders } = useOrderStore()
+  const [salesData, setSalesData] = useState<SalesDataPoint[]>([])
+  const [topProducts, setTopProducts] = useState<TopProductRow[]>([])
+  const [topCategories, setTopCategories] = useState<TopCategoryRow[]>([])
 
   useEffect(() => {
     fetchEmployees()
     fetchProducts()
     fetchOrders()
+    Promise.all([reportsApi.salesTrend(), reportsApi.topProducts(), reportsApi.topCategories()])
+      .then(([trend, productsData, categoriesData]) => {
+        setSalesData(trend as unknown as SalesDataPoint[])
+        setTopProducts(productsData as unknown as TopProductRow[])
+        setTopCategories(categoriesData as unknown as TopCategoryRow[])
+      })
+      .catch(() => {})
   }, [fetchEmployees, fetchProducts, fetchOrders])
 
   const sessions = useMemo(
@@ -193,7 +225,7 @@ export default function ReportsPage() {
           <CardContent>
             <div className="h-[220px] sm:h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockSalesData}>
+              <LineChart data={salesData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                 <XAxis dataKey="date" stroke={CHART_AXIS_STROKE} fontSize={12} />
                 <YAxis stroke={CHART_AXIS_STROKE} fontSize={12} />
@@ -219,7 +251,7 @@ export default function ReportsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={mockTopCategories}
+                  data={topCategories}
                   dataKey="revenue"
                   nameKey="name"
                   cx="50%"
@@ -227,7 +259,7 @@ export default function ReportsPage() {
                   outerRadius={90}
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 >
-                  {mockTopCategories.map((_, i) => (
+                  {topCategories.map((_, i) => (
                     <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
                   ))}
                 </Pie>
@@ -249,7 +281,7 @@ export default function ReportsPage() {
         <CardContent>
           <div className="h-[200px] sm:h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={mockSalesData}>
+            <BarChart data={salesData}>
               <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
               <XAxis dataKey="date" stroke={CHART_AXIS_STROKE} fontSize={12} />
               <YAxis stroke={CHART_AXIS_STROKE} fontSize={12} />
@@ -265,7 +297,7 @@ export default function ReportsPage() {
         <div className="space-y-2">
           <h3 className="text-sm font-semibold">Top Products</h3>
           <DataTable
-            data={mockTopProducts}
+            data={topProducts}
             columns={[
               { key: 'name', header: 'Product', cell: (p) => p.name },
               { key: 'qty', header: 'Qty', cell: (p) => p.quantity },
@@ -276,7 +308,7 @@ export default function ReportsPage() {
         <div className="space-y-2">
           <h3 className="text-sm font-semibold">Top Categories</h3>
           <DataTable
-            data={mockTopCategories}
+            data={topCategories}
             columns={[
               { key: 'name', header: 'Category', cell: (c) => c.name },
               { key: 'qty', header: 'Qty', cell: (c) => c.quantity },

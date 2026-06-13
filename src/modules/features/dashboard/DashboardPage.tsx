@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Area,
@@ -29,23 +29,39 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  mockSalesData,
-  mockTopProducts,
-  mockTopCategories,
-  mockOrders,
-  mockCustomers,
-  mockFloors,
-} from '@/mock'
+import { reportsApi } from '@/services/api'
+import { useCustomerStore, useOrderStore, useTableStore } from '@/store'
 import { cn, formatCurrency, formatDateTime, ORDER_STATUS_COLORS } from '@/utils'
 import { CHART_TOOLTIP_STYLE, CHART_GRID_STROKE, CHART_AXIS_STROKE } from '@/utils/chartTheme'
 import type { DateFilter, Order, Customer } from '@/types'
 
-const FILTER_MULTIPLIERS: Record<DateFilter, number> = {
-  today: 0.14,
-  week: 1,
-  month: 4.3,
-  custom: 1,
+interface DashboardStats {
+  revenue: number
+  totalOrders: number
+  avgOrderValue: number
+  productsSold: number
+}
+
+interface SalesDataPoint {
+  date: string
+  sales: number
+  revenue: number
+  orders: number
+}
+
+interface TopProduct {
+  id: string
+  name: string
+  quantity: number
+  revenue: number
+}
+
+interface TopCategory {
+  id: string
+  name: string
+  color: string
+  quantity: number
+  revenue: number
 }
 
 const containerVariants = {
@@ -62,66 +78,61 @@ export default function DashboardPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>('week')
   const [customFrom, setCustomFrom] = useState('2025-06-01')
   const [customTo, setCustomTo] = useState('2025-06-13')
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [salesData, setSalesData] = useState<SalesDataPoint[]>([])
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([])
+  const [topCategories, setTopCategories] = useState<TopCategory[]>([])
 
-  const multiplier = FILTER_MULTIPLIERS[dateFilter]
+  const { orders, fetchOrders } = useOrderStore()
+  const { customers, fetchCustomers } = useCustomerStore()
+  const { floors, fetchFloors } = useTableStore()
 
-  const stats = useMemo(() => {
-    const baseRevenue = mockSalesData.reduce((sum, d) => sum + d.revenue, 0)
-    const baseOrders = mockSalesData.reduce((sum, d) => sum + d.orders, 0)
-    const baseSales = mockSalesData.reduce((sum, d) => sum + d.sales, 0)
-    const activeTables = mockFloors
+  useEffect(() => {
+    async function loadReports() {
+      try {
+        const [dashboard, trend, products, categories] = await Promise.all([
+          reportsApi.dashboard(),
+          reportsApi.salesTrend(),
+          reportsApi.topProducts(),
+          reportsApi.topCategories(),
+        ])
+        setStats(dashboard as unknown as DashboardStats)
+        setSalesData(trend as unknown as SalesDataPoint[])
+        setTopProducts(products as unknown as TopProduct[])
+        setTopCategories(categories as unknown as TopCategory[])
+      } catch {
+        /* ignore */
+      }
+    }
+    loadReports()
+    fetchOrders()
+    fetchCustomers()
+    fetchFloors()
+  }, [fetchOrders, fetchCustomers, fetchFloors])
+
+  const displayStats = useMemo(() => {
+    const activeTables = floors
       .flatMap((f) => f.tables)
       .filter((t) => t.status === 'occupied' || t.status === 'reserved').length
 
     return {
-      revenue: Math.round(baseRevenue * multiplier),
-      totalOrders: Math.round(baseOrders * multiplier),
-      avgOrderValue: Math.round((baseRevenue * multiplier) / Math.max(baseOrders * multiplier, 1)),
+      revenue: stats?.revenue ?? 0,
+      totalOrders: stats?.totalOrders ?? 0,
+      avgOrderValue: stats?.avgOrderValue ?? 0,
       activeTables,
-      customers: mockCustomers.length,
-      productsSold: Math.round(baseSales * multiplier),
+      customers: customers.length,
+      productsSold: stats?.productsSold ?? 0,
     }
-  }, [multiplier])
-
-  const salesData = useMemo(
-    () =>
-      mockSalesData.map((d) => ({
-        ...d,
-        sales: Math.round(d.sales * multiplier),
-        revenue: Math.round(d.revenue * multiplier),
-        orders: Math.round(d.orders * multiplier),
-      })),
-    [multiplier]
-  )
-
-  const topProducts = useMemo(
-    () =>
-      mockTopProducts.map((p) => ({
-        ...p,
-        quantity: Math.round(p.quantity * multiplier),
-        revenue: Math.round(p.revenue * multiplier),
-      })),
-    [multiplier]
-  )
-
-  const topCategories = useMemo(
-    () =>
-      mockTopCategories.map((c) => ({
-        ...c,
-        quantity: Math.round(c.quantity * multiplier),
-        revenue: Math.round(c.revenue * multiplier),
-      })),
-    [multiplier]
-  )
+  }, [stats, floors, customers])
 
   const recentOrders = useMemo(
-    () => [...mockOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
-    []
+    () => [...orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
+    [orders]
   )
 
   const recentCustomers = useMemo(
-    () => [...mockCustomers].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
-    []
+    () => [...customers].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 5),
+    [customers]
   )
 
   const orderColumns = [
@@ -221,12 +232,12 @@ export default function DashboardPage() {
       </motion.div>
 
       <motion.div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" variants={itemVariants}>
-        <StatCard title="Revenue" value={stats.revenue} icon={DollarSign} isCurrency trend={{ value: 12.5, label: 'vs last period' }} />
-        <StatCard title="Total Orders" value={stats.totalOrders} icon={ShoppingCart} trend={{ value: 8.2, label: 'vs last period' }} />
-        <StatCard title="Avg Order Value" value={stats.avgOrderValue} icon={TrendingUp} isCurrency />
-        <StatCard title="Active Tables" value={stats.activeTables} icon={UtensilsCrossed} />
-        <StatCard title="Customers" value={stats.customers} icon={Users} />
-        <StatCard title="Products Sold" value={stats.productsSold} icon={Package} trend={{ value: 5.4, label: 'vs last period' }} />
+        <StatCard title="Revenue" value={displayStats.revenue} icon={DollarSign} isCurrency trend={{ value: 12.5, label: 'vs last period' }} />
+        <StatCard title="Total Orders" value={displayStats.totalOrders} icon={ShoppingCart} trend={{ value: 8.2, label: 'vs last period' }} />
+        <StatCard title="Avg Order Value" value={displayStats.avgOrderValue} icon={TrendingUp} isCurrency />
+        <StatCard title="Active Tables" value={displayStats.activeTables} icon={UtensilsCrossed} />
+        <StatCard title="Customers" value={displayStats.customers} icon={Users} />
+        <StatCard title="Products Sold" value={displayStats.productsSold} icon={Package} trend={{ value: 5.4, label: 'vs last period' }} />
       </motion.div>
 
       <motion.div className="grid gap-4 lg:grid-cols-2" variants={itemVariants}>

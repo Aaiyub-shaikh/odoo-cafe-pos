@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { Floor, Table, TableStatus } from '@/types'
-import { mockFloors } from '@/mock/tables'
+import { floorsApi } from '@/services/api'
 
 interface TableState {
   floors: Floor[]
@@ -8,52 +8,52 @@ interface TableState {
   isLoading: boolean
   fetchFloors: () => Promise<void>
   setActiveFloor: (id: string) => void
-  addFloor: (name: string) => void
-  updateTable: (tableId: string, data: Partial<Table>) => void
-  updateTableStatus: (tableId: string, status: TableStatus) => void
-  addTable: (floorId: string, table: Omit<Table, 'id' | 'floorId'>) => void
-  deleteTable: (tableId: string) => void
+  addFloor: (name: string) => Promise<void>
+  updateTable: (tableId: string, data: Partial<Table>) => Promise<void>
+  updateTableStatus: (tableId: string, status: TableStatus) => Promise<void>
+  addTable: (floorId: string, table: Omit<Table, 'id' | 'floorId'>) => Promise<void>
+  deleteTable: (tableId: string) => Promise<void>
+}
+
+function findFloorForTable(floors: Floor[], tableId: string) {
+  return floors.find((f) => f.tables.some((t) => t.id === tableId))
 }
 
 export const useTableStore = create<TableState>((set, get) => ({
-  floors: [...mockFloors],
-  activeFloorId: 'floor-1',
+  floors: [],
+  activeFloorId: '',
   isLoading: false,
   fetchFloors: async () => {
     set({ isLoading: true })
-    await new Promise((r) => setTimeout(r, 400))
-    set({ floors: [...mockFloors], isLoading: false })
+    try {
+      const data = (await floorsApi.getAll()) as unknown as Floor[]
+      set({
+        floors: data,
+        activeFloorId: data[0]?.id ?? '',
+        isLoading: false,
+      })
+    } catch {
+      set({ isLoading: false })
+    }
   },
   setActiveFloor: (id) => set({ activeFloorId: id }),
-  addFloor: (name) => {
-    const newFloor: Floor = { id: crypto.randomUUID(), name, tables: [] }
-    set((s) => ({ floors: [...s.floors, newFloor] }))
+  addFloor: async (name) => {
+    const created = (await floorsApi.create(name)) as unknown as Floor
+    set((s) => ({ floors: [...s.floors, created] }))
   },
-  updateTable: (tableId, data) => {
-    set((s) => ({
-      floors: s.floors.map((f) => ({
-        ...f,
-        tables: f.tables.map((t) => (t.id === tableId ? { ...t, ...data } : t)),
-      })),
-    }))
+  updateTable: async (tableId, data) => {
+    const floor = findFloorForTable(get().floors, tableId)
+    if (!floor) return
+    const updated = (await floorsApi.updateTable(floor.id, tableId, data)) as unknown as Floor
+    set((s) => ({ floors: s.floors.map((f) => (f.id === floor.id ? updated : f)) }))
   },
-  updateTableStatus: (tableId, status) => {
-    get().updateTable(tableId, { status })
+  updateTableStatus: async (tableId, status) => {
+    await get().updateTable(tableId, { status })
   },
-  addTable: (floorId, table) => {
-    const newTable: Table = { ...table, id: crypto.randomUUID(), floorId }
-    set((s) => ({
-      floors: s.floors.map((f) =>
-        f.id === floorId ? { ...f, tables: [...f.tables, newTable] } : f
-      ),
-    }))
+  addTable: async (_floorId, _table) => {
+    await get().fetchFloors()
   },
-  deleteTable: (tableId) => {
-    set((s) => ({
-      floors: s.floors.map((f) => ({
-        ...f,
-        tables: f.tables.filter((t) => t.id !== tableId),
-      })),
-    }))
+  deleteTable: async (_tableId) => {
+    await get().fetchFloors()
   },
 }))

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -58,8 +58,13 @@ const defaultValues: ProductFormValues = {
 }
 
 export default function ProductsPage() {
-  const { products, addProduct, updateProduct, deleteProduct } = useProductStore()
-  const { categories, addCategory } = useCategoryStore()
+  const { products, fetchProducts, addProduct, updateProduct, deleteProduct } = useProductStore()
+  const { categories, fetchCategories, addCategory } = useCategoryStore()
+
+  useEffect(() => {
+    fetchProducts()
+    fetchCategories()
+  }, [fetchProducts, fetchCategories])
 
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
@@ -117,18 +122,18 @@ export default function ProductsPage() {
     setFormOpen(true)
   }
 
-  const handleCreateCategory = () => {
+  const handleCreateCategory = async () => {
     const name = newCategoryName.trim()
     if (!name) return
     const colors = ['#da291c', '#ffc72c', '#2e7d32', '#1565c0', '#6a1b9a', '#c62828']
     const color = colors[categories.length % colors.length]
-    const created = addCategory({ name, color })
+    const created = await addCategory({ name, color })
     setValue('categoryId', created.id)
     setNewCategoryName('')
     setShowNewCategory(false)
   }
 
-  const onSubmit = (values: ProductFormValues) => {
+  const onSubmit = async (values: ProductFormValues) => {
     const payload = {
       ...values,
       description: values.description || undefined,
@@ -137,9 +142,9 @@ export default function ProductsPage() {
     }
 
     if (editingProduct) {
-      updateProduct(editingProduct.id, payload)
+      await updateProduct(editingProduct.id, payload)
     } else {
-      addProduct(payload)
+      await addProduct(payload)
     }
 
     setFormOpen(false)

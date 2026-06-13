@@ -52,19 +52,23 @@ export default function CustomersPage() {
     setModalOpen(true)
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.name.trim() || !form.email.trim()) {
       toast.error('Name and email are required')
       return
     }
-    if (editing) {
-      updateCustomer(editing.id, form)
-      toast.success('Customer updated')
-    } else {
-      addCustomer(form)
-      toast.success('Customer created')
+    try {
+      if (editing) {
+        await updateCustomer(editing.id, form)
+        toast.success('Customer updated')
+      } else {
+        await addCustomer(form)
+        toast.success('Customer created')
+      }
+      setModalOpen(false)
+    } catch {
+      toast.error('Failed to save customer')
     }
-    setModalOpen(false)
   }
 
   return (

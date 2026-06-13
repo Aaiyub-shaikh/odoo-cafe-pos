@@ -50,16 +50,20 @@ export function CustomerSelector({ open, onOpenChange }: CustomerSelectorProps) 
     resetForm()
   }
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!name.trim() || !phone.trim()) return
-    const customer = addCustomer({
-      name: name.trim(),
-      email: email.trim() || `${name.trim().toLowerCase().replace(/\s+/g, '.')}@walkin.local`,
-      phone: phone.trim(),
-    })
-    setCustomer(customer)
-    onOpenChange(false)
-    resetForm()
+    try {
+      const customer = await addCustomer({
+        name: name.trim(),
+        email: email.trim() || `${name.trim().toLowerCase().replace(/\s+/g, '.')}@walkin.local`,
+        phone: phone.trim(),
+      })
+      setCustomer(customer)
+      onOpenChange(false)
+      resetForm()
+    } catch {
+      /* ignore */
+    }
   }
 
   const resetForm = () => {
