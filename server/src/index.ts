@@ -23,7 +23,27 @@ import { Booking } from './models/Booking.js'
 const app = express()
 const PORT = process.env.PORT || 5000
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173', credentials: true }))
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [])
+]
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true)
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true)
+      } else {
+        callback(new Error('Not allowed by CORS'), false)
+      }
+    },
+    credentials: true,
+  })
+)
 app.use(express.json())
 
 app.get('/api/health', (_req, res) => {
@@ -51,9 +71,18 @@ app.use('/api/coupon-items', createCrudRouter(Coupon))
 
 async function start() {
   await connectDB()
+  await ensureDemoPaymentMethod()
   app.listen(PORT, () => {
     console.log(`API server running on http://localhost:${PORT}`)
   })
+}
+
+async function ensureDemoPaymentMethod() {
+  await PaymentMethod.updateOne(
+    { type: 'demo' },
+    { $set: { type: 'demo', name: 'Demo Gateway', enabled: true } },
+    { upsert: true }
+  )
 }
 
 start().catch(console.error)

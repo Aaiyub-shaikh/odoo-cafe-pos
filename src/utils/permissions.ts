@@ -34,6 +34,7 @@ export const ADMIN_ROUTES = [
   '/bookings',
   '/settings',
   '/profile',
+  '/pos',
 ] as const
 
 /** Routes only accessible by cashier (employee POS) */
@@ -42,7 +43,7 @@ export const CASHIER_ROUTES = ['/pos'] as const
 export function canAccessRoute(role: UserRole, pathname: string) {
   if (pathname === '/kds') return true
   if (isAdmin(role)) {
-    return !CASHIER_ROUTES.includes(pathname as (typeof CASHIER_ROUTES)[number])
+    return ADMIN_ROUTES.includes(pathname as (typeof ADMIN_ROUTES)[number])
   }
   if (isCashier(role)) {
     return CASHIER_ROUTES.includes(pathname as (typeof CASHIER_ROUTES)[number]) || pathname === '/kds'

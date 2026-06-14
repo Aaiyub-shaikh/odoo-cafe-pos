@@ -19,6 +19,7 @@ interface PromotionState {
   updatePromotion: (id: string, data: Partial<Promotion>) => Promise<void>
   deletePromotion: (id: string) => Promise<void>
   validateCoupon: (code: string, customerId?: string) => Promise<CouponValidationResult>
+  fetchActiveCoupons: () => Promise<Coupon[]>
 }
 
 export const usePromotionStore = create<PromotionState>((set) => ({
@@ -77,6 +78,16 @@ export const usePromotionStore = create<PromotionState>((set) => ({
       return { coupon: result.coupon as unknown as Coupon }
     } catch {
       return { coupon: null, error: 'Could not validate coupon' }
+    }
+  },
+  fetchActiveCoupons: async () => {
+    try {
+      const data = await couponsApi.getActive()
+      const active = data as unknown as Coupon[]
+      set({ coupons: active })
+      return active
+    } catch {
+      return []
     }
   },
 }))

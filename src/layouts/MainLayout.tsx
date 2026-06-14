@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Sidebar, MobileSidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
 import { useAuthStore, useSessionStore, useUIStore } from '@/store'
+import { APP_NAME, APP_SHORT_NAME } from '@/config/brand'
 
 export default function MainLayout() {
   const location = useLocation()
@@ -19,7 +20,7 @@ export default function MainLayout() {
 
   useEffect(() => {
     const sessionLabel = session?.status === 'open' ? ' · Session Open' : ''
-    document.title = user ? `RestMana · ${user.name}${sessionLabel}` : 'RestMana POS'
+    document.title = user ? `${APP_NAME} · ${user.name}${sessionLabel}` : APP_SHORT_NAME
   }, [user, session])
 
   useEffect(() => {

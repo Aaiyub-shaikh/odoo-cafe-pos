@@ -23,8 +23,9 @@ const orderSchema = new Schema(
     tax: { type: Number, required: true },
     discount: { type: Number, default: 0 },
     total: { type: Number, required: true },
-    status: { type: String, enum: ['draft', 'paid', 'cancelled'], default: 'draft' },
-    paymentMethod: { type: String, enum: ['cash', 'card', 'upi', 'razorpay'] },
+    status: { type: String, enum: ['draft', 'completed', 'paid', 'cancelled'], default: 'draft' },
+    paymentMethod: { type: String, enum: ['cash', 'card', 'upi', 'razorpay', 'demo'] },
+    paymentReference: { type: String },
     razorpayPaymentId: { type: String },
     razorpayOrderId: { type: String },
     couponCode: { type: String },
@@ -34,6 +35,7 @@ const orderSchema = new Schema(
     employeeId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     employeeName: { type: String, required: true },
     sessionId: { type: Schema.Types.ObjectId, ref: 'PosSession' },
+    kitchenDismissed: { type: Boolean, default: false },
   },
   { timestamps: true }
 )

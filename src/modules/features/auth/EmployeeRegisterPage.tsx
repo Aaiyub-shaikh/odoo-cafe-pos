@@ -36,7 +36,7 @@ export default function EmployeeRegisterPage() {
       return
     }
 
-    openSession()
+    await openSession()
     navigate('/pos')
   }
 

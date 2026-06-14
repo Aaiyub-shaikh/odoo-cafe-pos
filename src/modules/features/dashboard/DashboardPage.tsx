@@ -76,8 +76,12 @@ const itemVariants = {
 
 export default function DashboardPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>('week')
-  const [customFrom, setCustomFrom] = useState('2025-06-01')
-  const [customTo, setCustomTo] = useState('2025-06-13')
+  const [customFrom, setCustomFrom] = useState(() => {
+    const d = new Date()
+    d.setDate(1) // first day of the current month
+    return d.toISOString().split('T')[0]
+  })
+  const [customTo, setCustomTo] = useState(() => new Date().toISOString().split('T')[0])
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [salesData, setSalesData] = useState<SalesDataPoint[]>([])
   const [topProducts, setTopProducts] = useState<TopProduct[]>([])
@@ -87,14 +91,33 @@ export default function DashboardPage() {
   const { customers, fetchCustomers } = useCustomerStore()
   const { floors, fetchFloors } = useTableStore()
 
+  const { dateFrom, dateTo } = useMemo(() => {
+    const today = new Date()
+    const toISO = (d: Date) => d.toISOString().split('T')[0]
+    const to = toISO(today)
+    let from = to
+
+    if (dateFilter === 'today') {
+      from = to
+    } else if (dateFilter === 'week') {
+      from = toISO(new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000))
+    } else if (dateFilter === 'month') {
+      from = toISO(new Date(today.getFullYear(), today.getMonth(), 1))
+    } else if (dateFilter === 'custom') {
+      from = customFrom
+      return { dateFrom: from, dateTo: customTo }
+    }
+    return { dateFrom: from, dateTo: to }
+  }, [dateFilter, customFrom, customTo])
+
   useEffect(() => {
     async function loadReports() {
       try {
         const [dashboard, trend, products, categories] = await Promise.all([
-          reportsApi.dashboard(),
-          reportsApi.salesTrend(),
-          reportsApi.topProducts(),
-          reportsApi.topCategories(),
+          reportsApi.dashboard(dateFrom, dateTo),
+          reportsApi.salesTrend(dateFrom, dateTo),
+          reportsApi.topProducts(dateFrom, dateTo),
+          reportsApi.topCategories(dateFrom, dateTo),
         ])
         setStats(dashboard as unknown as DashboardStats)
         setSalesData(trend as unknown as SalesDataPoint[])
@@ -104,7 +127,10 @@ export default function DashboardPage() {
         /* ignore */
       }
     }
-    loadReports()
+    void loadReports()
+  }, [dateFrom, dateTo, orders])
+
+  useEffect(() => {
     fetchOrders()
     fetchCustomers()
     fetchFloors()

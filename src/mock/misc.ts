@@ -3,7 +3,7 @@ import type { PaymentMethod, Coupon, Promotion, Booking, Notification, SalesData
 export const mockPaymentMethods: PaymentMethod[] = [
   { id: 'pay-1', type: 'cash', name: 'Cash', enabled: true },
   { id: 'pay-2', type: 'card', name: 'Card', enabled: true },
-  { id: 'pay-3', type: 'upi', name: 'UPI', enabled: true, upiId: 'restmana@upi' },
+  { id: 'pay-3', type: 'upi', name: 'UPI', enabled: true, upiId: 'cafeluxe@upi' },
   { id: 'pay-4', type: 'razorpay', name: 'Razorpay', enabled: true },
 ]
 

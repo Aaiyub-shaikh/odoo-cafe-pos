@@ -48,6 +48,7 @@ export const TABLE_STATUS_COLORS = {
 
 export const ORDER_STATUS_COLORS = {
   draft: 'bg-yellow-500/20 text-yellow-400',
+  completed: 'bg-blue-500/20 text-blue-400',
   paid: 'bg-emerald-500/20 text-emerald-400',
   cancelled: 'bg-red-500/20 text-red-400',
 } as const

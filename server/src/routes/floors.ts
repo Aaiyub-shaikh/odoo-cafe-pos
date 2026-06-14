@@ -102,7 +102,7 @@ router.patch('/:floorId/tables/:tableId', authMiddleware, async (req: Request, r
     const floor = await Floor.findById(req.params.floorId)
     if (!floor) return res.status(404).json({ error: 'Floor not found' })
 
-    const table = floor.tables.id(req.params.tableId)
+    const table = floor.tables.id(req.params.tableId as string)
     if (!table) return res.status(404).json({ error: 'Table not found' })
 
     if (req.body.number !== undefined) {
@@ -134,10 +134,10 @@ router.delete('/:floorId/tables/:tableId', authMiddleware, async (req: Request, 
     const floor = await Floor.findById(req.params.floorId)
     if (!floor) return res.status(404).json({ error: 'Floor not found' })
 
-    const table = floor.tables.id(req.params.tableId)
+    const table = floor.tables.id(req.params.tableId as string)
     if (!table) return res.status(404).json({ error: 'Table not found' })
 
-    floor.tables.pull(req.params.tableId)
+    floor.tables.pull(req.params.tableId as string)
     await floor.save()
     res.json(formatFloor(floor.toObject()))
   } catch (err) {

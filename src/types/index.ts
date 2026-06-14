@@ -61,7 +61,7 @@ export interface Floor {
   tables: Table[]
 }
 
-export type OrderStatus = 'draft' | 'paid' | 'cancelled'
+export type OrderStatus = 'draft' | 'completed' | 'paid' | 'cancelled'
 export type KitchenStatus = 'to_cook' | 'preparing' | 'completed'
 
 export interface OrderItem {
@@ -86,7 +86,8 @@ export interface Order {
   discount: number
   total: number
   status: OrderStatus
-  paymentMethod?: 'cash' | 'card' | 'upi' | 'razorpay'
+  paymentMethod?: 'cash' | 'card' | 'upi' | 'razorpay' | 'demo'
+  paymentReference?: string
   razorpayPaymentId?: string
   razorpayOrderId?: string
   couponCode?: string
@@ -101,7 +102,7 @@ export interface Order {
 
 export interface PaymentMethod {
   id: string
-  type: 'cash' | 'card' | 'upi' | 'razorpay'
+  type: 'cash' | 'card' | 'upi' | 'razorpay' | 'demo'
   name: string
   enabled: boolean
   upiId?: string

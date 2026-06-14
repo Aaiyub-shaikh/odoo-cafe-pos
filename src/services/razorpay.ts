@@ -1,3 +1,5 @@
+import { APP_SHORT_NAME } from '@/config/brand'
+
 declare global {
   interface Window {
     Razorpay: new (options: RazorpayCheckoutOptions) => RazorpayInstance
@@ -68,7 +70,7 @@ export function openRazorpayCheckout(params: OpenRazorpayCheckoutParams): Promis
           key: params.keyId,
           amount: Math.round(params.amount * 100),
           currency: params.currency || 'INR',
-          name: params.name || 'RestMana POS',
+          name: params.name || APP_SHORT_NAME,
           description: params.description || 'Order payment',
           order_id: params.orderId,
           prefill: {

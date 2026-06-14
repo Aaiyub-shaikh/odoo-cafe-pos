@@ -1,0 +1,5 @@
+export const APP_NAME = 'Café Luxe'
+export const APP_SHORT_NAME = 'Café Luxe POS'
+export const APP_TAGLINE = 'Premium Café & Restaurant POS'
+export const APP_EMAIL = 'info@cafeluxe.com'
+export const APP_UPI_ID = 'cafeluxe@upi'

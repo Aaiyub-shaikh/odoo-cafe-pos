@@ -37,7 +37,7 @@ export default function LoginPage() {
     if (!loggedInUser) return
 
     if (loggedInUser.role === 'cashier') {
-      openSession()
+      await openSession()
       navigate('/pos')
       return
     }

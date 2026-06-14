@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getNavItemsForRole } from '@/config/navigation'
+import { APP_NAME } from '@/config/brand'
 import { useAuthStore, useUIStore } from '@/store'
 import { cn } from '@/utils'
 
@@ -85,7 +86,7 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
       </div>
       {!collapsed && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col">
-          <span className="text-sm font-bold tracking-tight text-foreground">RestMana</span>
+          <span className="text-sm font-bold tracking-tight text-foreground">{APP_NAME}</span>
           <span className="text-[10px] text-muted-foreground">Admin Panel</span>
         </motion.div>
       )}

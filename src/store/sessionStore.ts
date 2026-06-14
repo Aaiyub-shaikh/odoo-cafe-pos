@@ -3,26 +3,64 @@ import type { PosSession } from '@/types'
 import { useAuthStore } from './authStore'
 import { sessionsApi } from '@/services/api'
 
+function mapSession(raw: Record<string, unknown>): PosSession {
+  return raw as unknown as PosSession
+}
+
 interface SessionState {
   session: PosSession | null
-  openSession: () => Promise<void>
+  isEnsuring: boolean
+  openSession: () => Promise<PosSession | null>
+  restoreSession: () => Promise<PosSession | null>
+  ensureSession: () => Promise<PosSession | null>
   closeSession: () => Promise<void>
   updateSessionStats: (sales: number) => Promise<void>
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
   session: null,
+  isEnsuring: false,
   openSession: async () => {
     const user = useAuthStore.getState().user
-    if (!user || user.role !== 'cashier') return
+    if (!user) return null
     try {
-      const session = (await sessionsApi.open({
-        employeeName: user.name,
-        openingCash: 5000,
-      })) as unknown as PosSession
+      const session = mapSession(
+        await sessionsApi.open({
+          employeeName: user.name,
+          openingCash: 5000,
+        })
+      )
       set({ session })
+      return session
     } catch {
-      /* ignore */
+      return null
+    }
+  },
+  restoreSession: async () => {
+    const user = useAuthStore.getState().user
+    if (!user) return null
+    try {
+      const active = await sessionsApi.getActive()
+      if (!active) return null
+      const session = mapSession(active)
+      set({ session })
+      return session
+    } catch {
+      return null
+    }
+  },
+  ensureSession: async () => {
+    const { session, isEnsuring } = get()
+    if (session) return session
+    if (isEnsuring) return null
+
+    set({ isEnsuring: true })
+    try {
+      const restored = await get().restoreSession()
+      if (restored) return restored
+      return await get().openSession()
+    } finally {
+      set({ isEnsuring: false })
     }
   },
   closeSession: async () => {

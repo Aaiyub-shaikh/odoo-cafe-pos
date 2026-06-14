@@ -1,24 +1,25 @@
-import { useState } from 'react'
-import { Navigate, Outlet } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, Outlet } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Circle, UtensilsCrossed, LogOut, Grid3x3 } from 'lucide-react'
+import { Circle, UtensilsCrossed, LogOut, Grid3x3, LayoutDashboard } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAuthStore, useSessionStore, usePosStore } from '@/store'
 import { formatCurrency } from '@/utils'
+import { isAdmin } from '@/utils/permissions'
 import { CloseSessionDialog } from '@/modules/features/pos/CloseSessionDialog'
 import { useTableStore } from '@/store'
 
 export default function PosLayout() {
   const user = useAuthStore((s) => s.user)
-  const { session } = useSessionStore()
+  const { session, ensureSession } = useSessionStore()
   const selectedTableId = usePosStore((s) => s.selectedTableId)
   const floors = useTableStore((s) => s.floors)
   const [closeOpen, setCloseOpen] = useState(false)
 
-  if (user?.role === 'admin') {
-    return <Navigate to="/dashboard" replace />
-  }
+  useEffect(() => {
+    void ensureSession()
+  }, [ensureSession])
 
   const selectedTable = floors.flatMap((f) => f.tables).find((t) => t.id === selectedTableId)
 
@@ -46,6 +47,14 @@ export default function PosLayout() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {user && isAdmin(user.role) && (
+            <Button variant="ghost" size="sm" asChild className="hidden h-8 sm:inline-flex">
+              <Link to="/dashboard">
+                <LayoutDashboard className="h-3.5 w-3.5" />
+                Admin Panel
+              </Link>
+            </Button>
+          )}
           {session ? (
             <>
               <div className="hidden text-right text-xs sm:block">

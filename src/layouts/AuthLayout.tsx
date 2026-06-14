@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { UtensilsCrossed } from 'lucide-react'
+import { APP_TAGLINE } from '@/config/brand'
 
 export default function AuthLayout() {
   return (
@@ -23,9 +24,9 @@ export default function AuthLayout() {
           </div>
           <div className="text-center">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Rest<span className="text-primary">Mana</span>
+              Café <span className="text-primary">Luxe</span>
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">Your Cafe & Restaurant POS</p>
+            <p className="mt-1 text-sm text-muted-foreground">{APP_TAGLINE}</p>
           </div>
           <div className="brand-stripe w-24 rounded-full" />
         </div>

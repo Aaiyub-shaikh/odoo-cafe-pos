@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Tag, X } from 'lucide-react'
 import {
@@ -11,7 +11,9 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { usePosStore } from '@/store'
+import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { usePosStore, usePromotionStore } from '@/store'
 import { formatCurrency } from '@/utils'
 
 interface CouponDialogProps {
@@ -21,11 +23,16 @@ interface CouponDialogProps {
 
 export function CouponDialog({ open, onOpenChange }: CouponDialogProps) {
   const { couponCode, couponDiscount, selectedCustomer, applyCoupon, removeCoupon } = usePosStore()
+  const { coupons, fetchActiveCoupons } = usePromotionStore()
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
 
-  const handleApply = async () => {
-    const trimmed = code.trim().toUpperCase()
+  useEffect(() => {
+    if (open) fetchActiveCoupons()
+  }, [open, fetchActiveCoupons])
+
+  const handleApply = async (couponToApply?: string) => {
+    const trimmed = (couponToApply ?? code).trim().toUpperCase()
     if (!trimmed) {
       setError('Enter a coupon code')
       return
@@ -55,15 +62,21 @@ export function CouponDialog({ open, onOpenChange }: CouponDialogProps) {
     }
   }
 
+  const couponLabel = (c: (typeof coupons)[0]) => {
+    if (c.percentage) return `${c.percentage}% off`
+    if (c.fixedAmount) return `${formatCurrency(c.fixedAmount)} off`
+    return 'Discount'
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-sm bg-card border-border">
+      <DialogContent className="max-w-md bg-card border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Tag className="h-5 w-5 text-primary" />
             Apply Coupon
           </DialogTitle>
-          <DialogDescription>Enter a valid coupon code to get a discount</DialogDescription>
+          <DialogDescription>Choose an active coupon or enter a code</DialogDescription>
         </DialogHeader>
 
         {couponCode ? (
@@ -86,13 +99,48 @@ export function CouponDialog({ open, onOpenChange }: CouponDialogProps) {
           </motion.div>
         ) : (
           <div className="space-y-3">
+            {coupons.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Available coupons
+                </p>
+                <ScrollArea className="max-h-36">
+                  <div className="space-y-2 pr-2">
+                    {coupons.map((coupon) => (
+                      <button
+                        key={coupon.id}
+                        type="button"
+                        onClick={() => handleApply(coupon.code)}
+                        className="flex w-full items-center justify-between rounded-lg border border-border bg-secondary/30 px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-secondary/60"
+                      >
+                        <div>
+                          <p className="font-mono font-semibold text-primary">{coupon.code}</p>
+                          <p className="text-xs text-muted-foreground">{couponLabel(coupon)}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          {coupon.firstTimeUserOnly && (
+                            <Badge variant="outline" className="text-[10px]">First-time</Badge>
+                          )}
+                          {coupon.maxUsesPerUser != null && coupon.maxUsesPerUser > 0 && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {coupon.maxUsesPerUser}× / customer
+                            </Badge>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
             <Input
               value={code}
               onChange={(e) => {
                 setCode(e.target.value.toUpperCase())
                 setError('')
               }}
-              placeholder="e.g. SAVE10"
+              placeholder="Or enter code manually"
               className="bg-secondary/50 text-center text-lg font-mono tracking-widest uppercase"
               onKeyDown={(e) => e.key === 'Enter' && handleApply()}
             />
@@ -118,7 +166,7 @@ export function CouponDialog({ open, onOpenChange }: CouponDialogProps) {
             <Button variant="outline" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleApply}>Apply</Button>
+            <Button onClick={() => handleApply()}>Apply</Button>
           </DialogFooter>
         )}
       </DialogContent>

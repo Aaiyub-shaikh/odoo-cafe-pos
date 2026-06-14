@@ -25,6 +25,7 @@ interface PosState {
   removeFromCart: (productId: string) => void
   updateQuantity: (productId: string, quantity: number) => void
   clearCart: () => void
+  resetPos: () => void
   setCustomer: (customer: Customer | null) => void
   setTable: (tableId: string | null) => void
   applyCoupon: (code: string) => Promise<{ success: boolean; error?: string }>
@@ -89,7 +90,19 @@ export const usePosStore = create<PosState>((set, get) => ({
     }))
     get().recalculateDiscounts()
   },
-  clearCart: () =>
+  clearCart: () => {
+    set({
+      cart: [],
+      couponCode: null,
+      appliedCoupon: null,
+      couponDiscount: 0,
+      promotionId: null,
+      promotionName: null,
+      promotionDiscount: 0,
+    })
+    get().recalculateDiscounts()
+  },
+  resetPos: () =>
     set({
       cart: [],
       selectedCustomer: null,
@@ -186,7 +199,23 @@ export const useReportStore = create<ReportState>((set) => ({
     dateFrom: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     dateTo: new Date().toISOString().split('T')[0],
   },
-  setDateFilter: (filter) => set({ dateFilter: filter }),
+  setDateFilter: (filter) => {
+    const today = new Date()
+    const toISO = (d: Date) => d.toISOString().split('T')[0]
+    const dateTo = toISO(today)
+    let dateFrom = dateTo
+
+    if (filter === 'week') {
+      dateFrom = toISO(new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000))
+    } else if (filter === 'month') {
+      dateFrom = toISO(new Date(today.getFullYear(), today.getMonth(), 1))
+    }
+
+    set((s) => ({
+      dateFilter: filter,
+      filters: filter === 'custom' ? s.filters : { ...s.filters, dateFrom, dateTo },
+    }))
+  },
   setFilters: (filters) => set((s) => ({ filters: { ...s.filters, ...filters } })),
 }))
 

@@ -22,7 +22,14 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
   fetchMethods: async () => {
     try {
       const data = await paymentsApi.getAll()
-      set({ methods: data as unknown as PaymentMethod[] })
+      let methods = data as unknown as PaymentMethod[]
+      if (!methods.some((m) => m.type === 'demo')) {
+        methods = [
+          ...methods,
+          { id: 'demo-gateway', type: 'demo', name: 'Demo Gateway', enabled: true },
+        ]
+      }
+      set({ methods })
     } catch {
       /* ignore */
     }

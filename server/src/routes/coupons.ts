@@ -21,7 +21,7 @@ function formatCoupon(coupon: InstanceType<typeof Coupon>) {
   }
 }
 
-async function validateCouponForCustomer(
+export async function validateCouponForCustomer(
   code: string,
   customerId?: string
 ): Promise<{ valid: true; coupon: ReturnType<typeof formatCoupon> } | { valid: false; error: string }> {
@@ -64,10 +64,19 @@ async function validateCouponForCustomer(
   return { valid: true, coupon: formatCoupon(coupon) }
 }
 
+router.get('/active', authMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const coupons = await Coupon.find({ active: true }).sort({ createdAt: -1 })
+    res.json(coupons.map(formatCoupon))
+  } catch (err) {
+    res.status(500).json({ error: String(err) })
+  }
+})
+
 router.get('/validate/:code', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const customerId = req.query.customerId as string | undefined
-    const result = await validateCouponForCustomer(req.params.code, customerId)
+    const customerId = typeof req.query.customerId === 'string' ? req.query.customerId : undefined
+    const result = await validateCouponForCustomer(req.params.code as string, customerId)
     if (!result.valid) return res.json({ valid: false, error: result.error })
     res.json({ valid: true, coupon: result.coupon })
   } catch (err) {

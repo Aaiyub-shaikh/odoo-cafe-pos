@@ -2,7 +2,7 @@ import mongoose, { Schema } from 'mongoose'
 
 const paymentMethodSchema = new Schema(
   {
-    type: { type: String, enum: ['cash', 'card', 'upi', 'razorpay'], required: true },
+    type: { type: String, enum: ['cash', 'card', 'upi', 'razorpay', 'demo'], required: true },
     name: { type: String, required: true },
     enabled: { type: Boolean, default: true },
     upiId: { type: String },

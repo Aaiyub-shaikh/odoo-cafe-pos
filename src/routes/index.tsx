@@ -88,7 +88,7 @@ export const router = createBrowserRouter([
         ],
       },
       {
-        element: <RoleRoute allowedRoles={['cashier']} />,
+        element: <RoleRoute allowedRoles={['admin', 'cashier']} />,
         children: [
           {
             element: <PosLayout />,

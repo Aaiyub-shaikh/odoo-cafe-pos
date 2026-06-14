@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Banknote, CreditCard, Smartphone, Wallet, ExternalLink } from 'lucide-react'
+import { Banknote, CreditCard, Smartphone, Wallet, ExternalLink, FlaskConical } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,6 +16,7 @@ const methodIcons = {
   card: CreditCard,
   upi: Smartphone,
   razorpay: Wallet,
+  demo: FlaskConical,
 } as const
 
 export default function PaymentsPage() {

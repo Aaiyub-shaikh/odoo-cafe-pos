@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 import type { Order } from '@/types'
 import { formatCurrency, formatDateTime } from '@/utils'
+import { APP_NAME } from '@/config/brand'
 
 export interface ReportExportPayload {
   dateFrom: string
@@ -20,12 +21,12 @@ export interface ReportExportPayload {
 
 function reportFilename(ext: string) {
   const stamp = new Date().toISOString().slice(0, 10)
-  return `restmana-report-${stamp}.${ext}`
+  return `cafeluxe-report-${stamp}.${ext}`
 }
 
 export function exportReportPdf(data: ReportExportPayload) {
   const doc = new jsPDF()
-  const title = 'RestMana Sales Report'
+  const title = `${APP_NAME} Sales Report`
 
   doc.setFontSize(16)
   doc.text(title, 14, 18)
@@ -102,7 +103,7 @@ export function exportReportExcel(data: ReportExportPayload) {
   const wb = XLSX.utils.book_new()
 
   const summarySheet = XLSX.utils.aoa_to_sheet([
-    ['RestMana Sales Report'],
+    [`${APP_NAME} Sales Report`],
     ['Period', `${data.dateFrom} to ${data.dateTo}`],
     ['Generated', new Date().toLocaleString('en-IN')],
     [],

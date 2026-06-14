@@ -78,14 +78,21 @@ export default function ReportsPage() {
     fetchEmployees()
     fetchProducts()
     fetchOrders()
-    Promise.all([reportsApi.salesTrend(), reportsApi.topProducts(), reportsApi.topCategories()])
+  }, [fetchEmployees, fetchProducts, fetchOrders])
+
+  useEffect(() => {
+    Promise.all([
+      reportsApi.salesTrend(filters.dateFrom, filters.dateTo),
+      reportsApi.topProducts(filters.dateFrom, filters.dateTo),
+      reportsApi.topCategories(filters.dateFrom, filters.dateTo),
+    ])
       .then(([trend, productsData, categoriesData]) => {
         setSalesData(trend as unknown as SalesDataPoint[])
         setTopProducts(productsData as unknown as TopProductRow[])
         setTopCategories(categoriesData as unknown as TopCategoryRow[])
       })
       .catch(() => {})
-  }, [fetchEmployees, fetchProducts, fetchOrders])
+  }, [filters.dateFrom, filters.dateTo, orders])
 
   const sessions = useMemo(
     () => [...new Set(orders.map((o) => o.sessionId))].map((id) => ({ id, label: id })),
@@ -100,7 +107,7 @@ export default function ReportsPage() {
       if (filters.employeeId && o.employeeId !== filters.employeeId) return false
       if (filters.sessionId && o.sessionId !== filters.sessionId) return false
       if (filters.productId && !o.items.some((i) => i.productId === filters.productId)) return false
-      return o.status === 'paid'
+      return o.status === 'paid' || o.status === 'completed'
     })
   }, [orders, filters])
 
@@ -236,8 +243,8 @@ export default function ReportsPage() {
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Revenue" value={metrics.revenue} icon={IndianRupee} isCurrency trend={{ value: 12, label: 'vs last period' }} />
-        <StatCard title="Total Orders" value={metrics.totalOrders} icon={ShoppingCart} trend={{ value: 8, label: 'vs last period' }} />
+        <StatCard title="Revenue" value={metrics.revenue} icon={IndianRupee} isCurrency />
+        <StatCard title="Total Orders" value={metrics.totalOrders} icon={ShoppingCart} />
         <StatCard title="Avg Order Value" value={metrics.avgOrderValue} icon={TrendingUp} isCurrency />
         <StatCard title="Products Sold" value={metrics.productsSold} icon={BarChart3} />
       </div>

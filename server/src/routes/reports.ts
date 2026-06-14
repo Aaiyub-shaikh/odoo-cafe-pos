@@ -6,9 +6,27 @@ import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
 
-router.get('/dashboard', authMiddleware, async (_req: Request, res: Response) => {
+function parseDateRange(req: Request) {
+  const dateFrom = req.query.dateFrom as string | undefined
+  const dateTo = req.query.dateTo as string | undefined
+  const filter: Record<string, unknown> = { status: { $in: ['paid', 'completed'] } }
+
+  if (dateFrom || dateTo) {
+    filter.createdAt = {}
+    if (dateFrom) {
+      (filter.createdAt as Record<string, Date>).$gte = new Date(`${dateFrom}T00:00:00.000Z`)
+    }
+    if (dateTo) {
+      (filter.createdAt as Record<string, Date>).$lte = new Date(`${dateTo}T23:59:59.999Z`)
+    }
+  }
+
+  return filter
+}
+
+router.get('/dashboard', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const paidOrders = await Order.find({ status: 'paid' })
+    const paidOrders = await Order.find(parseDateRange(req))
     const revenue = paidOrders.reduce((s, o) => s + o.total, 0)
     const totalOrders = paidOrders.length
     const avgOrderValue = totalOrders ? revenue / totalOrders : 0
@@ -22,7 +40,7 @@ router.get('/dashboard', authMiddleware, async (_req: Request, res: Response) =>
       totalOrders,
       avgOrderValue,
       activeTables: 0,
-      customers: await Order.distinct('customerId').then((ids) => ids.filter(Boolean).length),
+      customers: new Set(paidOrders.map((o) => String(o.customerId)).filter(Boolean)).size,
       productsSold,
     })
   } catch (err) {
@@ -30,28 +48,34 @@ router.get('/dashboard', authMiddleware, async (_req: Request, res: Response) =>
   }
 })
 
-router.get('/sales-trend', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/sales-trend', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    const orders = await Order.find({ status: 'paid' })
-    const data = days.map((date, i) => {
-      const dayOrders = orders.filter((_, idx) => idx % 7 === i)
-      return {
-        date,
-        sales: dayOrders.reduce((s, o) => s + o.items.length, 0),
-        revenue: dayOrders.reduce((s, o) => s + o.total, 0),
-        orders: dayOrders.length,
-      }
-    })
+    const orders = await Order.find(parseDateRange(req)).sort({ createdAt: 1 })
+    const map = new Map<string, { sales: number; revenue: number; orders: number }>()
+
+    for (const order of orders) {
+      const date = (order.createdAt as Date).toISOString().split('T')[0]
+      const existing = map.get(date) || { sales: 0, revenue: 0, orders: 0 }
+      existing.sales += order.items.reduce((s, i) => s + i.quantity, 0)
+      existing.revenue += order.total
+      existing.orders += 1
+      map.set(date, existing)
+    }
+
+    const data = Array.from(map.entries()).map(([date, stats]) => ({
+      date,
+      ...stats,
+    }))
+
     res.json(data)
   } catch (err) {
     res.status(500).json({ error: String(err) })
   }
 })
 
-router.get('/top-products', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/top-products', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const orders = await Order.find({ status: 'paid' })
+    const orders = await Order.find(parseDateRange(req))
     const map = new Map<string, { name: string; quantity: number; revenue: number }>()
 
     for (const order of orders) {
@@ -74,11 +98,11 @@ router.get('/top-products', authMiddleware, async (_req: Request, res: Response)
   }
 })
 
-router.get('/top-categories', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/top-categories', authMiddleware, async (req: Request, res: Response) => {
   try {
     const products = await Product.find()
     const categories = await Category.find()
-    const orders = await Order.find({ status: 'paid' })
+    const orders = await Order.find(parseDateRange(req))
     const map = new Map<string, { name: string; color: string; quantity: number; revenue: number }>()
 
     for (const order of orders) {

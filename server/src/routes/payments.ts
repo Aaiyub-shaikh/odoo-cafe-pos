@@ -136,4 +136,25 @@ router.post('/razorpay/verify', authMiddleware, async (req: Request, res: Respon
   }
 })
 
+router.post('/demo/process', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const amount = Number(req.body.amount)
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: 'Valid amount is required' })
+    }
+
+    const method = String(req.body.method || 'card')
+    await new Promise((resolve) => setTimeout(resolve, 1200))
+
+    res.json({
+      success: true,
+      transactionId: `DEMO-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+      amount,
+      method,
+    })
+  } catch (err) {
+    res.status(500).json({ error: String(err) })
+  }
+})
+
 export default router

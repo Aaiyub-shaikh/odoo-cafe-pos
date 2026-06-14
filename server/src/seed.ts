@@ -79,8 +79,9 @@ async function seed() {
   await PaymentMethod.insertMany([
     { type: 'cash', name: 'Cash', enabled: true },
     { type: 'card', name: 'Card', enabled: true },
-    { type: 'upi', name: 'UPI', enabled: true, upiId: 'restmana@upi' },
-    { type: 'razorpay', name: 'Razorpay', enabled: true },
+    { type: 'upi', name: 'UPI', enabled: true, upiId: 'cafeluxe@upi' },
+    { type: 'demo', name: 'Demo Gateway', enabled: true },
+    { type: 'razorpay', name: 'Razorpay', enabled: false },
   ])
 
   await Coupon.insertMany([
@@ -98,7 +99,15 @@ async function seed() {
   ])
 
   await Promotion.insertMany([
-    { name: 'Buy 2 Get 1 Free - Starters', type: 'product', minQuantity: 2, discount: 100, discountType: 'percentage', active: true },
+    {
+      name: 'Buy 2 Get 1 Free - Starters',
+      type: 'category',
+      categoryIds: [catMap['Starters'].toString()],
+      minQuantity: 2,
+      discount: 100,
+      discountType: 'percentage',
+      active: true,
+    },
     { name: 'Orders above ₹1000', type: 'order', minOrderAmount: 1000, discount: 15, discountType: 'percentage', active: true },
     {
       name: '10% off Starters & Beverages',

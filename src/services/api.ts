@@ -10,6 +10,7 @@ function isPublicApiPath(path: string): boolean {
   if (PUBLIC_PATHS.some((p) => path.startsWith(p))) return true
   if (path === '/orders/kitchen') return true
   if (/^\/orders\/[^/]+\/items\/[^/]+\/kitchen$/.test(path)) return true
+  if (/^\/orders\/[^/]+\/kitchen\/(bulk|dismiss)$/.test(path)) return true
   return false
 }
 
@@ -99,6 +100,17 @@ export const ordersApi = {
       method: 'PATCH',
       body: JSON.stringify({ kitchenStatus }),
     }),
+  updateKitchenBulk: (
+    orderId: string,
+    kitchenStatus: string,
+    fromStatus?: string
+  ) =>
+    api<Record<string, unknown>>(`/orders/${orderId}/kitchen/bulk`, {
+      method: 'PATCH',
+      body: JSON.stringify({ kitchenStatus, fromStatus }),
+    }),
+  dismissKitchenOrder: (orderId: string) =>
+    api<Record<string, unknown>>(`/orders/${orderId}/kitchen/dismiss`, { method: 'PATCH' }),
   delete: (id: string) => api<{ success: boolean }>(`/orders/${id}`, { method: 'DELETE' }),
 }
 
@@ -156,6 +168,7 @@ export const couponsApi = {
     api<{ valid: boolean; coupon?: Record<string, unknown>; error?: string }>(
       `/coupons/validate/${encodeURIComponent(code)}${customerId ? `?customerId=${encodeURIComponent(customerId)}` : ''}`
     ),
+  getActive: () => api<Record<string, unknown>[]>('/coupons/active'),
 }
 
 export const promotionsApi = {
@@ -185,9 +198,21 @@ export const sessionsApi = {
     api<Record<string, unknown>>(`/sessions/${id}/stats`, { method: 'PATCH', body: JSON.stringify({ sales }) }),
 }
 
+function reportQuery(dateFrom?: string, dateTo?: string) {
+  const params = new URLSearchParams()
+  if (dateFrom) params.set('dateFrom', dateFrom)
+  if (dateTo) params.set('dateTo', dateTo)
+  const q = params.toString()
+  return q ? `?${q}` : ''
+}
+
 export const reportsApi = {
-  dashboard: () => api<Record<string, unknown>>('/reports/dashboard'),
-  salesTrend: () => api<Record<string, unknown>[]>('/reports/sales-trend'),
-  topProducts: () => api<Record<string, unknown>[]>('/reports/top-products'),
-  topCategories: () => api<Record<string, unknown>[]>('/reports/top-categories'),
+  dashboard: (dateFrom?: string, dateTo?: string) =>
+    api<Record<string, unknown>>(`/reports/dashboard${reportQuery(dateFrom, dateTo)}`),
+  salesTrend: (dateFrom?: string, dateTo?: string) =>
+    api<Record<string, unknown>[]>(`/reports/sales-trend${reportQuery(dateFrom, dateTo)}`),
+  topProducts: (dateFrom?: string, dateTo?: string) =>
+    api<Record<string, unknown>[]>(`/reports/top-products${reportQuery(dateFrom, dateTo)}`),
+  topCategories: (dateFrom?: string, dateTo?: string) =>
+    api<Record<string, unknown>[]>(`/reports/top-categories${reportQuery(dateFrom, dateTo)}`),
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
 import {
@@ -11,6 +11,7 @@ import {
   Printer,
   Mail,
   Loader2,
+  FlaskConical,
 } from 'lucide-react'
 import {
   Dialog,
@@ -30,25 +31,30 @@ import {
   usePosStore,
   useSessionStore,
   useAuthStore,
+  usePromotionStore,
 } from '@/store'
 import { razorpayApi } from '@/services/api'
 import { openRazorpayCheckout } from '@/services/razorpay'
+import { processDemoPayment } from '@/services/dummyGateway'
 import type { Order, OrderItem } from '@/types'
 import { cn, formatCurrency } from '@/utils'
 import { toast } from 'sonner'
+import { APP_NAME } from '@/config/brand'
+import type { PaymentMethod } from '@/types'
 
 interface PaymentModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-type PaymentType = 'cash' | 'card' | 'upi' | 'razorpay'
+type PaymentType = 'cash' | 'card' | 'upi' | 'razorpay' | 'demo'
 
 const METHOD_ICONS: Record<PaymentType, React.ReactNode> = {
   cash: <Banknote className="h-5 w-5" />,
   card: <CreditCard className="h-5 w-5" />,
   upi: <Smartphone className="h-5 w-5" />,
   razorpay: <Wallet className="h-5 w-5" />,
+  demo: <FlaskConical className="h-5 w-5" />,
 }
 
 export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
@@ -65,20 +71,34 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
     getTax,
     getDiscount,
     getTotal,
-    clearCart,
+    resetPos,
   } = usePosStore()
-  const { session } = useSessionStore()
+  const { session, ensureSession } = useSessionStore()
   const { user } = useAuthStore()
 
   const [selectedMethod, setSelectedMethod] = useState<PaymentType>('cash')
   const [receivedAmount, setReceivedAmount] = useState('')
   const [transactionRef, setTransactionRef] = useState('')
+  const [demoCardNumber, setDemoCardNumber] = useState('4111 1111 1111 1111')
+  const [demoCardExpiry, setDemoCardExpiry] = useState('12/28')
+  const [demoCardCvv, setDemoCardCvv] = useState('123')
   const [step, setStep] = useState<'payment' | 'receipt'>('payment')
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null)
   const [receiptEmail, setReceiptEmail] = useState<string | null>(null)
   const [isPaying, setIsPaying] = useState(false)
+  const methodInitialized = useRef(false)
 
-  const enabledMethods = methods.filter((m) => m.enabled)
+  const enabledMethods = useMemo(() => {
+    const enabled = methods.filter((m) => m.enabled)
+    if (enabled.some((m) => m.type === 'demo')) return enabled
+    const demoFallback: PaymentMethod = {
+      id: 'demo-gateway',
+      type: 'demo',
+      name: 'Demo Gateway',
+      enabled: true,
+    }
+    return [...enabled, demoFallback]
+  }, [methods])
   const total = getTotal()
   const changeDue = useMemo(() => {
     const received = parseFloat(receivedAmount) || 0
@@ -92,7 +112,7 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
 
   const upiMethod = methods.find((m) => m.type === 'upi')
   const upiQrValue = upiMethod?.upiId
-    ? `upi://pay?pa=${upiMethod.upiId}&pn=RestMana&am=${total.toFixed(2)}&cu=INR`
+    ? `upi://pay?pa=${upiMethod.upiId}&pn=${encodeURIComponent(APP_NAME)}&am=${total.toFixed(2)}&cu=INR`
     : ''
 
   useEffect(() => {
@@ -101,6 +121,9 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
       fetchRazorpayConfig()
       setReceivedAmount(total.toFixed(0))
       setTransactionRef('')
+      setDemoCardNumber('4111 1111 1111 1111')
+      setDemoCardExpiry('12/28')
+      setDemoCardCvv('123')
       setStep('payment')
       setCompletedOrder(null)
       setIsPaying(false)
@@ -108,22 +131,53 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
   }, [open, fetchMethods, fetchRazorpayConfig, total])
 
   useEffect(() => {
-    if (!open || enabledMethods.length === 0) return
-    const preferred = enabledMethods.find((m) => m.type === 'razorpay' && razorpayActive)
+    if (!open) {
+      methodInitialized.current = false
+      return
+    }
+    if (methodInitialized.current || enabledMethods.length === 0) return
+
+    const preferred =
+      enabledMethods.find((m) => m.type === 'demo')
       ?? enabledMethods.find((m) => m.type === 'cash')
+      ?? enabledMethods.find((m) => m.type === 'razorpay' && razorpayActive)
       ?? enabledMethods[0]
-    if (preferred) setSelectedMethod(preferred.type)
+
+    if (preferred) {
+      setSelectedMethod(preferred.type)
+      methodInitialized.current = true
+    }
   }, [open, enabledMethods, razorpayActive])
 
   const canConfirm = () => {
-    if (cart.length === 0 || !session || !user || isPaying) return false
+    if (cart.length === 0 || !user || isPaying) return false
     if (usesRazorpayCheckout) return true
+    if (selectedMethod === 'demo') {
+      return demoCardNumber.replace(/\s/g, '').length >= 12 && demoCardExpiry.length >= 4 && demoCardCvv.length >= 3
+    }
     if (selectedMethod === 'cash') return (parseFloat(receivedAmount) || 0) >= total
     if (selectedMethod === 'card') return transactionRef.trim().length >= 4
     return true
   }
 
-  const finalizeOrder = async (paymentMethod: PaymentType, extras?: { razorpayPaymentId?: string; razorpayOrderId?: string }) => {
+  const finalizeOrder = async (
+    paymentMethod: PaymentType,
+    extras?: { razorpayPaymentId?: string; razorpayOrderId?: string; paymentReference?: string }
+  ) => {
+    if (couponCode) {
+      const validation = await usePromotionStore.getState().validateCoupon(couponCode, selectedCustomer?.id)
+      if (!validation.coupon) {
+        toast.error(validation.error ?? 'Coupon is no longer valid')
+        return
+      }
+    }
+
+    const activeSession = session ?? (await ensureSession())
+    if (!activeSession) {
+      toast.error('Could not start POS session. Please try again.')
+      return
+    }
+
     const orderItems: OrderItem[] = cart.map((item) => ({
       id: crypto.randomUUID(),
       productId: item.productId,
@@ -134,7 +188,8 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
       kitchenStatus: 'to_cook' as const,
     }))
 
-    const storedMethod = usesRazorpayCheckout ? 'razorpay' : paymentMethod
+    const storedMethod =
+      paymentMethod === 'demo' ? 'demo' : usesRazorpayCheckout ? 'razorpay' : paymentMethod
 
     const order = await createOrder({
       customerId: selectedCustomer?.id,
@@ -147,6 +202,7 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
       total,
       status: 'paid',
       paymentMethod: storedMethod,
+      paymentReference: extras?.paymentReference ?? (paymentMethod === 'card' ? transactionRef.trim() : undefined),
       razorpayPaymentId: extras?.razorpayPaymentId,
       razorpayOrderId: extras?.razorpayOrderId,
       couponCode: couponCode ?? undefined,
@@ -154,18 +210,36 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
       promotionName: promotionName ?? undefined,
       employeeId: user!.id,
       employeeName: user!.name,
-      sessionId: session!.id,
+      sessionId: activeSession.id,
+    }).catch((err: Error) => {
+      toast.error(err.message || 'Payment failed')
+      return null
     })
 
+    if (!order) return
+
     setReceiptEmail(selectedCustomer?.email ?? null)
-    clearCart()
+    resetPos()
     setCompletedOrder(order)
     setStep('receipt')
     toast.success(`Payment received for ${order.orderNumber}`)
   }
 
   const handleConfirm = async () => {
-    if (!canConfirm() || !session || !user) return
+    if (!canConfirm() || !user) return
+
+    if (selectedMethod === 'demo') {
+      setIsPaying(true)
+      try {
+        const result = await processDemoPayment(total, 'card')
+        await finalizeOrder('demo', { paymentReference: result.transactionId })
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Demo payment failed')
+      } finally {
+        setIsPaying(false)
+      }
+      return
+    }
 
     if (usesRazorpayCheckout) {
       setIsPaying(true)
@@ -180,7 +254,7 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
           customerName: selectedCustomer?.name,
           customerEmail: selectedCustomer?.email,
           customerPhone: selectedCustomer?.phone,
-          description: `RestMana order — ${formatCurrency(total)}`,
+          description: `${APP_NAME} order — ${formatCurrency(total)}`,
         })
 
         await razorpayApi.verify({
@@ -225,7 +299,12 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
     onOpenChange(false)
   }
 
-  const confirmLabel = usesRazorpayCheckout ? 'Pay with Razorpay' : 'Confirm Payment'
+  const confirmLabel =
+    selectedMethod === 'demo'
+      ? 'Pay with Demo Gateway'
+      : usesRazorpayCheckout
+        ? 'Pay with Razorpay'
+        : 'Confirm Payment'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -236,8 +315,8 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
               <DialogTitle>Payment</DialogTitle>
               <DialogDescription>
                 {razorpayActive
-                  ? 'Cash or pay online via Razorpay (Card, UPI, Wallets)'
-                  : 'Cash, Card, or UPI'}
+                  ? 'Cash, Demo Gateway, or pay online via Razorpay (Card, UPI, Wallets)'
+                  : 'Cash, Card, UPI, or Demo Gateway for testing'}
               </DialogDescription>
             </DialogHeader>
 
@@ -334,6 +413,57 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
                 </motion.div>
               )}
 
+              {selectedMethod === 'demo' && (
+                <motion.div
+                  key="demo"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="space-y-3 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4"
+                >
+                  <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                    <FlaskConical className="h-4 w-4" />
+                    Demo Payment Gateway (test mode)
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="demo-card">Card Number</Label>
+                    <Input
+                      id="demo-card"
+                      value={demoCardNumber}
+                      onChange={(e) => setDemoCardNumber(e.target.value)}
+                      className="bg-secondary/50 font-mono"
+                      placeholder="4111 1111 1111 1111"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="demo-expiry">Expiry</Label>
+                      <Input
+                        id="demo-expiry"
+                        value={demoCardExpiry}
+                        onChange={(e) => setDemoCardExpiry(e.target.value)}
+                        className="bg-secondary/50 font-mono"
+                        placeholder="MM/YY"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="demo-cvv">CVV</Label>
+                      <Input
+                        id="demo-cvv"
+                        value={demoCardCvv}
+                        onChange={(e) => setDemoCardCvv(e.target.value)}
+                        className="bg-secondary/50 font-mono"
+                        placeholder="123"
+                        maxLength={4}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Simulated gateway — no real charge. Any test card details work.
+                  </p>
+                </motion.div>
+              )}
+
               {selectedMethod === 'card' && !usesRazorpayCheckout && (
                 <motion.div
                   key="card"
@@ -407,9 +537,18 @@ export function PaymentModal({ open, onOpenChange }: PaymentModalProps) {
               <p><span className="text-muted-foreground">Customer:</span> {completedOrder?.customerName}</p>
               <p>
                 <span className="text-muted-foreground">Method:</span>{' '}
-                {completedOrder?.paymentMethod === 'razorpay' ? 'Razorpay' : completedOrder?.paymentMethod?.toUpperCase()}
+                {completedOrder?.paymentMethod === 'razorpay'
+                  ? 'Razorpay'
+                  : completedOrder?.paymentMethod === 'demo'
+                    ? 'Demo Gateway'
+                    : completedOrder?.paymentMethod?.toUpperCase()}
               </p>
-              {completedOrder?.razorpayPaymentId && (
+              {(completedOrder?.paymentReference || completedOrder?.razorpayPaymentId) && (
+                <p className="font-mono text-xs text-muted-foreground">
+                  Ref: {completedOrder.paymentReference ?? completedOrder.razorpayPaymentId}
+                </p>
+              )}
+              {completedOrder?.razorpayPaymentId && completedOrder?.paymentMethod === 'razorpay' && (
                 <p className="font-mono text-xs text-muted-foreground">
                   Payment ID: {completedOrder.razorpayPaymentId}
                 </p>

@@ -21,7 +21,7 @@ import { Separator } from '@/components/ui/separator'
 import { SearchInput } from '@/components/shared/SearchInput'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Badge } from '@/components/ui/badge'
-import { usePosStore, useProductStore, useCategoryStore, useOrderStore, useAuthStore, useSessionStore, useTableStore, usePromotionStore } from '@/store'
+import { usePosStore, useProductStore, useCategoryStore, useOrderStore, useAuthStore, useSessionStore, useTableStore, usePromotionStore, useCustomerStore } from '@/store'
 import type { OrderItem } from '@/types'
 import { cn, formatCurrency } from '@/utils'
 import { CustomerSelector } from './CustomerSelector'
@@ -60,10 +60,12 @@ export function PosPage() {
 
   const { products, fetchProducts } = useProductStore()
   const { categories, fetchCategories } = useCategoryStore()
-  const { fetchPromotions } = usePromotionStore()
+  const { fetchPromotions, fetchActiveCoupons } = usePromotionStore()
+  const { fetchCustomers } = useCustomerStore()
+  const { fetchFloors, updateTableStatus } = useTableStore()
   const { createOrder } = useOrderStore()
   const { user } = useAuthStore()
-  const { session } = useSessionStore()
+  const { session, ensureSession } = useSessionStore()
   const floors = useTableStore((s) => s.floors)
 
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
@@ -77,10 +79,26 @@ export function PosPage() {
   const cartItemCount = cart.reduce((s, i) => s + i.quantity, 0)
 
   useEffect(() => {
-    fetchProducts()
-    fetchCategories()
-    fetchPromotions().then(() => recalculateDiscounts())
-  }, [fetchProducts, fetchCategories, fetchPromotions, recalculateDiscounts])
+    const syncPosData = () => {
+      fetchProducts()
+      fetchCategories()
+      fetchCustomers()
+      fetchFloors()
+      fetchActiveCoupons()
+      fetchPromotions().then(() => recalculateDiscounts())
+    }
+    syncPosData()
+    const interval = setInterval(syncPosData, 15000)
+    return () => clearInterval(interval)
+  }, [
+    fetchProducts,
+    fetchCategories,
+    fetchCustomers,
+    fetchFloors,
+    fetchActiveCoupons,
+    fetchPromotions,
+    recalculateDiscounts,
+  ])
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
@@ -135,51 +153,69 @@ export function PosPage() {
       toast.error('Cart is empty')
       return
     }
-    if (!user || !session) {
-      toast.error('No active session')
+    if (!user) {
+      toast.error('Not signed in')
       return
     }
 
-    const orderItems: OrderItem[] = cart.map((item) => ({
-      id: crypto.randomUUID(),
-      productId: item.productId,
-      productName: item.productName,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      lineTotal: item.unitPrice * item.quantity,
-      kitchenStatus: 'to_cook',
-    }))
+    const activeSession = session ?? (await ensureSession())
+    if (!activeSession) {
+      toast.error('Could not start POS session. Please try again.')
+      return
+    }
 
-    const order = await createOrder({
-      customerId: selectedCustomer?.id,
-      customerName: selectedCustomer?.name ?? 'Walk-in',
-      items: orderItems,
-      subtotal: getSubtotal(),
-      tax: getTax(),
-      discount: getDiscount(),
-      total: getTotal(),
-      status: 'draft',
-      couponCode: couponCode ?? undefined,
-      promotionId: promotionId ?? undefined,
-      promotionName: promotionName ?? undefined,
-      employeeId: user.id,
-      employeeName: user.name,
-      sessionId: session.id,
-    })
+    try {
+      const orderItems: OrderItem[] = cart.map((item) => ({
+        id: crypto.randomUUID(),
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        lineTotal: item.unitPrice * item.quantity,
+        kitchenStatus: 'to_cook',
+      }))
 
-    clearCart()
-    toast.success(`Order ${order.orderNumber} sent to kitchen`)
+      const order = await createOrder({
+        customerId: selectedCustomer?.id,
+        customerName: selectedCustomer?.name ?? 'Walk-in',
+        tableId: selectedTableId ?? undefined,
+        items: orderItems,
+        subtotal: getSubtotal(),
+        tax: getTax(),
+        discount: getDiscount(),
+        total: getTotal(),
+        status: 'draft',
+        couponCode: couponCode ?? undefined,
+        promotionId: promotionId ?? undefined,
+        promotionName: promotionName ?? undefined,
+        employeeId: user.id,
+        employeeName: user.name,
+        sessionId: activeSession.id,
+      })
+
+      if (selectedTableId) {
+        await updateTableStatus(selectedTableId, 'occupied')
+      }
+
+      clearCart()
+      toast.success(`Order ${order.orderNumber} sent to kitchen`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to send order to kitchen'
+      toast.error(message)
+      console.error('Send to kitchen error:', error)
+    }
   }
 
   const selectedTable = floors.flatMap((f) => f.tables).find((t) => t.id === selectedTableId)
 
-  const handlePay = () => {
+  const handlePay = async () => {
     if (cart.length === 0) {
       toast.error('Cart is empty')
       return
     }
-    if (!session) {
-      toast.error('No active session')
+    const activeSession = session ?? (await ensureSession())
+    if (!activeSession) {
+      toast.error('Could not start POS session. Please try again.')
       return
     }
     setPaymentOpen(true)

@@ -12,6 +12,7 @@ import {
   Settings,
   CalendarDays,
   ChefHat,
+  UtensilsCrossed,
   type LucideIcon,
 } from 'lucide-react'
 import type { UserRole } from '@/types'
@@ -25,9 +26,10 @@ export interface NavItem {
   external?: boolean
 }
 
-/** Admin backend navigation — no POS Terminal */
+/** Admin backend navigation */
 export const adminNavItems: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/pos', label: 'POS Terminal', icon: UtensilsCrossed },
   { to: '/orders', label: 'Orders', icon: ClipboardList },
   { to: '/customers', label: 'Customers', icon: Users },
   { to: '/products', label: 'Products', icon: Package },

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { PageHeader } from '@/components/shared'
+import { APP_NAME, APP_EMAIL } from '@/config/brand'
 
 interface GeneralSettings {
   restaurantName: string
@@ -21,10 +22,10 @@ interface GeneralSettings {
 }
 
 const defaultSettings: GeneralSettings = {
-  restaurantName: 'RestMana',
+  restaurantName: APP_NAME,
   address: '123 Food Street, Mumbai, Maharashtra 400001',
   phone: '+91 98765 43210',
-  email: 'info@restmana.com',
+  email: APP_EMAIL,
   currency: 'INR',
   taxRate: '5',
   serviceCharge: '10',

@@ -13,6 +13,12 @@ interface OrderState {
   deleteOrder: (id: string) => Promise<void>
   updateOrderStatus: (id: string, status: OrderStatus) => Promise<void>
   updateKitchenItemStatus: (orderId: string, itemId: string, status: OrderItem['kitchenStatus']) => Promise<void>
+  updateKitchenOrderStage: (
+    orderId: string,
+    kitchenStatus: OrderItem['kitchenStatus'],
+    fromStatus?: OrderItem['kitchenStatus']
+  ) => Promise<void>
+  dismissKitchenOrder: (orderId: string) => Promise<void>
   getKitchenOrders: () => Order[]
 }
 
@@ -62,9 +68,21 @@ export const useOrderStore = create<OrderState>((set, get) => ({
       orders: s.orders.map((o) => (o.id === orderId ? updated : o)),
     }))
   },
+  updateKitchenOrderStage: async (orderId, kitchenStatus, fromStatus) => {
+    const updated = (await ordersApi.updateKitchenBulk(orderId, kitchenStatus, fromStatus)) as unknown as Order
+    set((s) => ({
+      orders: s.orders.some((o) => o.id === orderId)
+        ? s.orders.map((o) => (o.id === orderId ? updated : o))
+        : [updated, ...s.orders],
+    }))
+  },
+  dismissKitchenOrder: async (orderId) => {
+    await ordersApi.dismissKitchenOrder(orderId)
+    set((s) => ({
+      orders: s.orders.filter((o) => o.id !== orderId),
+    }))
+  },
   getKitchenOrders: () => {
-    return get().orders.filter(
-      (o) => o.status === 'draft' && o.items.some((i) => i.kitchenStatus !== 'completed')
-    )
+    return get().orders
   },
 }))
